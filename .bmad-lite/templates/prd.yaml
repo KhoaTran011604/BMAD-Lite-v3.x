@@ -1,15 +1,13 @@
 # BMAD-Lite PRD Template
-# Distributed output: each section → separate file in docs/prd/
+# 100% BMAD-compliant structure with simplified elicitation
 template:
   id: prd-template-v3
   name: Product Requirements Document
   version: 3.0
   output:
     format: markdown
-    mode: sharded  # Output directly to folder, NOT single file
-    folder: docs/prd/
-    index: docs/prd/index.md
-    max_lines_per_file: 200  # Shard further if any section exceeds this
+    filename: docs/prd.md
+    title: "{{project_name}} Product Requirements Document (PRD)"
 
 workflow:
   mode: interactive
@@ -17,17 +15,16 @@ workflow:
   elicitation: advanced-elicitation
 
 # ============================================================================
-# SECTIONS — each section becomes its own file in docs/prd/
-# Section titles MUST match exactly for consistent file naming
+# SECTIONS - 100% BMAD COMPLIANT STRUCTURE
+# Section titles MUST match exactly for proper sharding
 # ============================================================================
 sections:
   # --------------------------------------------------------------------------
   # Section 1: Goals and Background Context
-  # OUTPUT FILE: docs/prd/goals-and-background-context.md
+  # OUTPUT H2: ## Goals and Background Context
   # --------------------------------------------------------------------------
   - id: goals-context
     title: Goals and Background Context
-    output_file: goals-and-background-context.md
     required: true
     instruction: |
       BMAD-LITE APPROACH:
@@ -36,17 +33,17 @@ sections:
       3. Present complete section for validation
       4. Accept refinements
 
-      OUTPUT FORMAT (this becomes its own file):
-      # Goals and Background Context
+      OUTPUT FORMAT (EXACT - for proper sharding):
+      ## Goals and Background Context
 
-      ## Goals
+      ### Goals
       - [Goal 1: One-line desired outcome]
       - [Goal 2: One-line desired outcome]
 
-      ## Background Context
+      ### Background Context
       [1-2 paragraphs: what problem this solves, why it matters]
 
-      ## Change Log
+      ### Change Log
       | Date | Version | Description | Author |
       |------|---------|-------------|--------|
       | {today} | 1.0 | Initial draft | @planner |
@@ -55,9 +52,11 @@ sections:
       - id: goals
         title: Goals
         type: bullet-list
+        instruction: Bullet list of 1 line desired outcomes
       - id: background
         title: Background Context
         type: paragraphs
+        instruction: 1-2 short paragraphs summarizing background
       - id: changelog
         title: Change Log
         type: table
@@ -65,11 +64,10 @@ sections:
 
   # --------------------------------------------------------------------------
   # Section 2: Requirements
-  # OUTPUT FILE: docs/prd/requirements.md
+  # OUTPUT H2: ## Requirements
   # --------------------------------------------------------------------------
   - id: requirements
     title: Requirements
-    output_file: requirements.md
     required: true
     elicit: true
     instruction: |
@@ -78,14 +76,14 @@ sections:
       2. Present complete lists for validation
       3. Focus questions on unclear requirements only
 
-      OUTPUT FORMAT (this becomes its own file):
-      # Requirements
+      OUTPUT FORMAT (EXACT):
+      ## Requirements
 
-      ## Functional
+      ### Functional
       - FR1: [Requirement statement]
       - FR2: [Requirement statement]
 
-      ## Non Functional
+      ### Non Functional
       - NFR1: [Requirement statement]
       - NFR2: [Requirement statement]
 
@@ -94,18 +92,20 @@ sections:
         title: Functional
         type: numbered-list
         prefix: FR
+        instruction: "Core functionalities - FR[n]: [requirement statement]"
+
       - id: non-functional
         title: Non Functional
         type: numbered-list
         prefix: NFR
+        instruction: "Performance, security, scalability - NFR[n]: [requirement statement]"
 
   # --------------------------------------------------------------------------
   # Section 3: User Interface Design Goals
-  # OUTPUT FILE: docs/prd/user-interface-design-goals.md
+  # OUTPUT H2: ## User Interface Design Goals
   # --------------------------------------------------------------------------
   - id: ui-goals
     title: User Interface Design Goals
-    output_file: user-interface-design-goals.md
     required: false
     condition: "PRD has UX/UI requirements"
     elicit: true
@@ -115,39 +115,52 @@ sections:
       2. Present complete section for validation
       3. Mark assumptions clearly
 
-      OUTPUT FORMAT (this becomes its own file):
-      # User Interface Design Goals
+      OUTPUT FORMAT (EXACT):
+      ## User Interface Design Goals
 
-      ## Overall UX Vision
+      ### Overall UX Vision
       [2-3 sentences describing the intended user experience]
 
-      ## Key Interaction Paradigms
+      ### Key Interaction Paradigms
       [How users will primarily interact with the system]
 
-      ## Core Screens and Views
+      ### Core Screens and Views
       - [Screen 1]: [Purpose]
       - [Screen 2]: [Purpose]
 
-      ## Accessibility
+      ### Accessibility
       {None | WCAG AA | WCAG AAA}
 
-      ## Branding
+      ### Branding
       [Known branding requirements or "TBD"]
 
-      ## Target Device and Platforms
+      ### Target Device and Platforms
       {Web Responsive | Mobile Only | Desktop Only | Cross-Platform}
 
     choices:
       accessibility: [None, WCAG AA, WCAG AAA]
       platforms: [Web Responsive, Mobile Only, Desktop Only, Cross-Platform]
 
+    subsections:
+      - id: ux-vision
+        title: Overall UX Vision
+      - id: interaction-paradigms
+        title: Key Interaction Paradigms
+      - id: core-screens
+        title: Core Screens and Views
+      - id: accessibility
+        title: Accessibility
+      - id: branding
+        title: Branding
+      - id: target-platforms
+        title: Target Device and Platforms
+
   # --------------------------------------------------------------------------
   # Section 4: Technical Assumptions
-  # OUTPUT FILE: docs/prd/technical-assumptions.md
+  # OUTPUT H2: ## Technical Assumptions
   # --------------------------------------------------------------------------
   - id: technical-assumptions
     title: Technical Assumptions
-    output_file: technical-assumptions.md
     required: true
     elicit: true
     instruction: |
@@ -155,23 +168,24 @@ sections:
       1. Check for tech-preferences.md - use to pre-populate
       2. PRE-POPULATE technical decisions with rationale
       3. FOCUS elicitation on critical choices
+      4. Document ALL choices with rationale
 
-      OUTPUT FORMAT (this becomes its own file):
-      # Technical Assumptions
+      OUTPUT FORMAT (EXACT):
+      ## Technical Assumptions
 
-      ## Repository Structure
+      ### Repository Structure
       {Monorepo | Polyrepo | Multi-repo}
       Rationale: [Why this choice]
 
-      ## Service Architecture
+      ### Service Architecture
       {Monolith | Microservices | Serverless}
       Rationale: [Why this choice]
 
-      ## Testing Requirements
+      ### Testing Requirements
       {Unit Only | Unit + Integration | Full Testing Pyramid}
       Rationale: [Why this choice]
 
-      ## Additional Technical Assumptions and Requests
+      ### Additional Technical Assumptions and Requests
       - [Assumption 1 with rationale]
       - [Assumption 2 with rationale]
 
@@ -180,13 +194,22 @@ sections:
       architecture: [Monolith, Microservices, Serverless]
       testing: [Unit Only, Unit + Integration, Full Testing Pyramid]
 
+    subsections:
+      - id: repository-structure
+        title: Repository Structure
+      - id: service-architecture
+        title: Service Architecture
+      - id: testing-requirements
+        title: Testing Requirements
+      - id: additional-assumptions
+        title: Additional Technical Assumptions and Requests
+
   # --------------------------------------------------------------------------
   # Section 5: Epic List
-  # OUTPUT FILE: docs/prd/epic-list.md
+  # OUTPUT H2: ## Epic List
   # --------------------------------------------------------------------------
   - id: epic-list
     title: Epic List
-    output_file: epic-list.md
     required: true
     elicit: true
     instruction: |
@@ -201,8 +224,8 @@ sections:
       - Minimize epic count
       - Cross-cutting concerns flow THROUGH epics
 
-      OUTPUT FORMAT (this becomes its own file):
-      # Epic List
+      OUTPUT FORMAT (EXACT):
+      ## Epic List
 
       **Epic 1: {Title}**
       {One sentence goal statement}
@@ -213,12 +236,11 @@ sections:
       [Await user approval before proceeding to Epic Details]
 
   # --------------------------------------------------------------------------
-  # Section 6: Epic Details (each epic → its own file)
-  # OUTPUT FILES: docs/prd/epic-1-{slug}.md, epic-2-{slug}.md, etc.
+  # Section 6: Epic Details (Multiple H2s - Epic 1, Epic 2, etc.)
+  # OUTPUT H2: ## Epic 1: {Title}, ## Epic 2: {Title}, etc.
   # --------------------------------------------------------------------------
   - id: epic-details
     title: "Epic {{epic_number}}: {{epic_title}}"
-    output_file: "epic-{{epic_number}}-{{epic_slug}}.md"
     required: true
     repeatable: true
     elicit: true
@@ -227,7 +249,6 @@ sections:
       1. After Epic List approved, detail each epic
       2. PRE-POPULATE stories and AC
       3. Present complete epic for validation
-      4. EACH EPIC is written to its own file
 
       STORY RULES:
       - Stories MUST be sequential within epic
@@ -235,12 +256,12 @@ sections:
       - Size for AI agent: 2-4 hours
       - No story depends on later stories
 
-      OUTPUT FORMAT (each epic becomes its own file):
-      # Epic {N}: {Title}
+      OUTPUT FORMAT (EXACT - each epic is separate H2):
+      ## Epic 1: {Title}
 
       **Goal:** {2-3 sentences describing objective and value}
 
-      ## Story {N}.1: {Title}
+      ### Story 1.1: {Title}
       **As a** {user type},
       **I want** {action},
       **so that** {benefit}.
@@ -249,45 +270,58 @@ sections:
       1. Given {context}, When {action}, Then {expected}
       2. Given {context}, When {action}, Then {expected}
 
-      ## Story {N}.2: {Title}
+      ### Story 1.2: {Title}
       [Same format...]
+
+      ---
+
+      ## Epic 2: {Title}
+      [Same structure...]
 
     story_template: |
       As a {{user_type}},
       I want {{action}},
       so that {{benefit}}.
 
+    subsections:
+      - id: story
+        title: "Story {{epic_number}}.{{story_number}}: {{story_title}}"
+        repeatable: true
+        subsections:
+          - id: acceptance-criteria
+            title: Acceptance Criteria
+            type: numbered-list
+
   # --------------------------------------------------------------------------
   # Section 7: Checklist Results Report
-  # OUTPUT FILE: docs/prd/checklist-results-report.md
+  # OUTPUT H2: ## Checklist Results Report
   # --------------------------------------------------------------------------
   - id: checklist-results
     title: Checklist Results Report
-    output_file: checklist-results-report.md
     required: false
     instruction: |
+      BMAD-LITE APPROACH:
       Optional - run planning-checklist if needed.
 
-      OUTPUT FORMAT (this becomes its own file):
-      # Checklist Results Report
+      OUTPUT FORMAT (EXACT):
+      ## Checklist Results Report
 
       [Results from planning-checklist.md execution]
       [Or "Skipped - simple project"]
 
   # --------------------------------------------------------------------------
   # Section 8: Next Steps
-  # OUTPUT FILE: docs/prd/next-steps.md
+  # OUTPUT H2: ## Next Steps
   # --------------------------------------------------------------------------
   - id: next-steps
     title: Next Steps
-    output_file: next-steps.md
     required: true
     instruction: |
-      OUTPUT FORMAT (this becomes its own file):
-      # Next Steps
+      OUTPUT FORMAT (EXACT):
+      ## Next Steps
 
-      ## UX Expert Prompt
+      ### UX Expert Prompt
       [If project has UI: prompt for UX work]
 
-      ## Architect Prompt
+      ### Architect Prompt
       Run `@planner create-architecture` with this PRD to create the technical architecture.

@@ -16,6 +16,7 @@ Invoke the Planner agent for strategic planning tasks.
 |--------|-------------|
 | `prd` | Create PRD document |
 | `arch` / `architecture` | Create Architecture document |
+| `vert-to-v3` | Convert monolith documents to distributed v3 structure |
 | `epic` | Create epic files from PRD |
 | `add-epic` | Add new epic to existing PRD |
 | `add-story` | Add new story to existing epic |
@@ -43,8 +44,9 @@ Load and activate the Planner agent:
 **Combines:** Product Manager + Architect
 
 **Core Capabilities:**
-- Create PRD → outputs directly to `docs/prd/` folder (distributed, NOT single file)
-- Create Architecture → outputs directly to `docs/architecture/` folder (distributed)
+- Create PRD → `docs/prd.md` (Monolith output by default for greenfield review)
+- Create Architecture → `docs/architecture.md` (Monolith output by default for greenfield review)
+- Convert monolith docs to distributed v3 structure (`*vert-to-v3`)
 - Plan epics and stories
 - Add/update epics and stories post-MVP
 - Validate planning artifacts
@@ -52,8 +54,8 @@ Load and activate the Planner agent:
 **Key Principles:**
 - **PRD** = Requirements (What & Why)
 - **Architecture** = Technical (How)
-- **Distributed by default** — each section is its own file, max 200 lines/file
-- **No monolith files** — `*shard` only needed for legacy docs
+- **Monolith-first for Greenfield** — design first in single comprehensive files (`docs/prd.md` & `docs/architecture.md`) for total overview and easier feedback.
+- **Distributed for V3 Execution** — use `*vert-to-v3` to split them, generate a `module-graph.md`, automatically archive old files into `/docs/archived/` and ignore them, and auto-update `config.yaml`.
 
 ---
 
@@ -61,18 +63,13 @@ Load and activate the Planner agent:
 
 After activation, use these commands with `*` prefix:
 
-### Document Creation (Distributed Output)
-- `*create-prd` - Create PRD → `docs/prd/` folder (multiple files)
-- `*create-architecture` - Create Architecture → `docs/architecture/` folder
+### Document Creation (Monolith Output)
+- `*create-prd` - Create PRD → `docs/prd.md` (single file)
+- `*create-architecture` - Create Architecture → `docs/architecture.md` (single file)
 - `*create-epic` - Create epic file
 
-### Add/Update Features
-- `*add-epic` - Add new epic to PRD (+ update Architecture)
-- `*add-story` - Add new story to existing epic
-- `*update-epic` - Modify existing epic
-- `*update-story` - Modify existing story
-
-### Utilities
+### Conversion & Utilities
+- `*vert-to-v3` - Convert monolith → sharded folders (`docs/prd/` & `docs/architecture/`), generate `docs/module-graph.md`, archive monoliths to `/docs/archived/`, ignore them, and auto-update configurations
 - `*shard prd` - Split PRD into sections
 - `*shard architecture` - Split Architecture into sections
 - `*planning-checklist` - Validate artifacts
@@ -318,10 +315,65 @@ What changes are needed?
 2. **Then update Architecture** - Define how to build it
 3. **Keep them in sync** - Changes flow from PRD to Architecture
 
-### Distributed Documents (Default)
+### Distributed Documents (After Conversion)
 
-Documents are created as distributed files by default (`docs/prd/`, `docs/architecture/`):
+After running `*vert-to-v3`, documents are split into distributed files under `docs/prd/` and `docs/architecture/`:
 - Update individual section files directly
-- `*shard` only needed for legacy monolith files
 - Keep `index.md` in sync when adding/removing sections
 - Max 200 lines per file — split further if needed
+
+---
+
+## Convert to v3 Workflow (*vert-to-v3)
+
+**Command:** `/bmad-plan vert-to-v3` or `*vert-to-v3`
+
+**Purpose:** Convert the greenfield monolith files (`docs/prd.md`, `docs/architecture.md`) to the standard sharded v3 structure.
+
+### Step-by-Step Process
+
+```
+1. SHARD MONOLITHS
+   ├── Split docs/prd.md into docs/prd/
+   └── Split docs/architecture.md into docs/architecture/
+
+2. GENERATE MODULE GRAPH
+   ├── Analyze sharded data-models & components
+   └── Generate docs/module-graph.md
+
+3. ARCHIVE LEGACY FILES
+   ├── Create docs/archived/
+   └── Move docs/prd.md & docs/architecture.md to docs/archived/
+
+4. UPDATE GITIGNORE
+   └── Append docs/archived/ to .gitignore
+
+5. UPDATE CONFIGURATION
+   └── Rewrite .bmad-lite/config.yaml to point to sharded paths & set sharded mode
+```
+
+### Example Session
+
+```
+User: *vert-to-v3
+
+Planner: Starting conversion of monolith files to distributed v3 structure...
+
+1. Sharding monoliths:
+   ├── docs/prd.md ➔ docs/prd/ (index.md, goals-and-background-context.md, etc.) ✓
+   └── docs/architecture.md ➔ docs/architecture/ (index.md, introduction.md, tech-stack.md, etc.) ✓
+
+2. Generating module graph:
+   └── docs/module-graph.md ✓
+
+3. Archiving legacy monolith files:
+   └── docs/archived/prd.md & docs/archived/architecture.md ✓
+
+4. Updating .gitignore:
+   └── Appended docs/archived/ to .gitignore ✓
+
+5. Auto-updating .bmad-lite/config.yaml:
+   └── Switched output.mode to 'sharded' and updated all document paths ✓
+
+Conversion to v3 complete! You can now start implementation with '/bmad-execute draft'.
+```

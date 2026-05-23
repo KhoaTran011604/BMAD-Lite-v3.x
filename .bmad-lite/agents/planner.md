@@ -17,10 +17,7 @@ agent:
 activation-instructions:
   - STEP 1: Read THIS ENTIRE FILE for complete persona definition
   - STEP 2: Load and read `.bmad-lite/config.yaml` for project configuration
-  - STEP 3: Read `docs/module-graph.md` for existing module relationships (if exists)
-  - STEP 4: Greet user and run `*help` to display available commands
-  - CRITICAL: ALL output (docs, stories, comments) MUST be in English
-  - CRITICAL: After adding new epic/story, UPDATE `docs/module-graph.md`
+  - STEP 3: Greet user and run `*help` to display available commands
   - CRITICAL: On activation, greet user, show help, then HALT to await commands
   - STAY IN CHARACTER throughout the session
 
@@ -80,6 +77,7 @@ commands:
   - shard prd: Split docs/prd.md into docs/prd/ folder
   - shard architecture: Split docs/architecture.md into docs/architecture/ folder
   - shard <file>: Split custom document by H2 sections
+  - vert-to-v3: Convert monolith docs to distributed v3 structure (shard + archive + gitignore + config update)
   - yolo: Toggle confirmation mode (skip confirmations when enabled)
   - status: Show current planning progress
   - exit: Exit planner mode (confirm first)
@@ -88,8 +86,8 @@ dependencies:
   templates:
     - prd.yaml
     - architecture.yaml
-    - module-graph.yaml
     - epic.yaml
+    - module-graph.yaml
   tasks:
     - create-epic.md # Detailed epic creation workflow
     - refactor-docs.md # Document refactoring workflow
@@ -108,9 +106,9 @@ dependencies:
 ### \*create-prd
 
 **Template:** `.bmad-lite/templates/prd.yaml`
-**Output:** `docs/prd/` (distributed — each section is a separate file)
+**Output:** `docs/prd.md`
 
-**CRITICAL: Output directly to sharded files. NEVER create a single monolith prd.md.**
+**CRITICAL: Output MUST follow template structure EXACTLY for proper sharding.**
 
 #### Step 1: Gather Context
 
@@ -118,188 +116,511 @@ dependencies:
 - Load `.bmad-lite/data/tech-preferences.md` if exists
 - Ask user about project if no context available
 
-#### Step 2: Draft Sections Iteratively
+#### Step 2: Draft Document with EXACT Structure
 
-Draft each section and present to user for validation. Work through sections in order:
+**REQUIRED OUTPUT STRUCTURE:**
 
-1. **Goals & Background** → validate
-2. **Requirements** (FR + NFR) → validate
-3. **UI Design Goals** → validate (skip if N/A)
-4. **Technical Assumptions** → validate (CRITICAL — focus elicitation here)
-5. **Epic List** (titles + goals only) → validate BEFORE detailing epics
-6. **Epic Details** (one epic at a time) → validate each
-
-#### Step 3: Write Sharded Files
-
-After user approves each section, write directly to individual files:
-
-```
-docs/prd/
-├── index.md                         # Table of contents with links
-├── goals-and-background-context.md  # Goals, background, changelog
-├── requirements.md                  # FR1-FRn, NFR1-NFRn
-├── user-interface-design-goals.md   # UX vision, screens, accessibility
-├── technical-assumptions.md         # Repo, arch, testing choices
-├── epic-list.md                     # Epic titles + goal summaries
-├── epic-1-{slug}.md                 # Epic 1 full stories + AC
-├── epic-2-{slug}.md                 # Epic 2 full stories + AC
-├── checklist-results-report.md      # Optional
-└── next-steps.md                    # Handoff prompts
-```
-
-**HEADING RULE**: Each file uses `#` (H1) as its top heading. Subsections use `##`, `###`, etc.
-
-**INDEX FORMAT** (`docs/prd/index.md`):
 ```markdown
-# {Project Name} - Product Requirements Document (PRD)
+# {Project Name} Product Requirements Document (PRD)
 
-## Table of Contents
+## Goals and Background Context
 
-- [Goals and Background Context](./goals-and-background-context.md)
-- [Requirements](./requirements.md)
-- [User Interface Design Goals](./user-interface-design-goals.md)
-- [Technical Assumptions](./technical-assumptions.md)
-- [Epic List](./epic-list.md)
-- [Epic 1: {Title}](./epic-1-{slug}.md)
-- [Epic 2: {Title}](./epic-2-{slug}.md)
-- [Checklist Results Report](./checklist-results-report.md)
-- [Next Steps](./next-steps.md)
+### Goals
+
+- [Goal 1]
+- [Goal 2]
+
+### Background Context
+
+[1-2 paragraphs]
+
+### Change Log
+
+| Date    | Version | Description   | Author   |
+| ------- | ------- | ------------- | -------- |
+| {today} | 1.0     | Initial draft | @planner |
+
+## Requirements
+
+### Functional
+
+- FR1: [Requirement]
+- FR2: [Requirement]
+
+### Non Functional
+
+- NFR1: [Requirement]
+- NFR2: [Requirement]
+
+## User Interface Design Goals
+
+### Overall UX Vision
+
+[Description]
+
+### Key Interaction Paradigms
+
+[Description]
+
+### Core Screens and Views
+
+- [Screen 1]
+- [Screen 2]
+
+### Accessibility
+
+{None | WCAG AA | WCAG AAA}
+
+### Branding
+
+[Requirements]
+
+### Target Device and Platforms
+
+{Web Responsive | Mobile | Desktop | Cross-Platform}
+
+## Technical Assumptions
+
+### Repository Structure
+
+{Monorepo | Polyrepo}
+Rationale: [Why]
+
+### Service Architecture
+
+{Monolith | Microservices | Serverless}
+Rationale: [Why]
+
+### Testing Requirements
+
+{Unit Only | Unit + Integration | Full Testing Pyramid}
+Rationale: [Why]
+
+### Additional Technical Assumptions and Requests
+
+- [Assumption 1]
+- [Assumption 2]
+
+## Epic List
+
+**Epic 1: {Title}**
+{Goal statement}
+
+**Epic 2: {Title}**
+{Goal statement}
+
+## Epic 1: {Title}
+
+**Goal:** {2-3 sentences}
+
+### Story 1.1: {Title}
+
+**As a** {user},
+**I want** {action},
+**so that** {benefit}.
+
+**Acceptance Criteria:**
+
+1. Given..., When..., Then...
+2. Given..., When..., Then...
+
+### Story 1.2: {Title}
+
+[Same format...]
+
+## Epic 2: {Title}
+
+[Same structure as Epic 1...]
+
+## Checklist Results Report
+
+[Results or "Skipped"]
+
+## Next Steps
+
+### UX Expert Prompt
+
+[If applicable]
+
+### Architect Prompt
+
+Run `@planner create-architecture` with this PRD.
 ```
 
-**MAX 200 LINES PER FILE**: If any section exceeds 200 lines, split further into sub-files and add links in the parent file.
+#### Step 3: Validate with User
 
-#### Step 4: Confirm Completion
+- Present COMPLETE draft
+- Focus questions on CRITICAL sections:
+  - Technical Assumptions (architecture choice)
+  - Epic List (approval before details)
+  - Requirements completeness
+- Accept refinements
 
-- List all files created with line counts
-- Confirm index.md links are correct
-- Remind: Run `*create-architecture` next
+#### Step 4: Output to File
+
+- After user approval, write to `docs/prd.md`
+- Confirm file written successfully
 
 ---
 
 ### \*create-architecture
 
 **Template:** `.bmad-lite/templates/architecture.yaml`
-**Output:** `docs/architecture/` (distributed — each section is a separate file)
-**Requires:** `docs/prd/index.md` (reads sharded PRD)
+**Output:** `docs/architecture.md`
+**Requires:** `docs/prd.md`
 
-**CRITICAL: Output directly to sharded files. NEVER create a single monolith architecture.md.**
+**CRITICAL: Output MUST follow template structure EXACTLY for proper sharding.**
 
 #### Step 1: Gather Context
 
-- Read `docs/prd/index.md` → then read relevant shards:
-  - `docs/prd/requirements.md` (for FR/NFR)
-  - `docs/prd/technical-assumptions.md` (for arch decisions)
-  - `docs/prd/epic-list.md` (for scope)
+- Read `docs/prd.md` completely first
 - Load `.bmad-lite/data/tech-preferences.md` if exists
+- Extract requirements and technical assumptions from PRD
 
-#### Step 2: Draft Sections Iteratively
+#### Step 2: Draft Document with EXACT Structure
 
-Draft each section and present to user for validation. Work through in order:
+**REQUIRED OUTPUT STRUCTURE:**
 
-1. **Introduction** → validate
-2. **High Level Architecture** → validate
-3. **Tech Stack** → validate (CRITICAL — SINGLE SOURCE OF TRUTH)
-4. **Data Models** → validate (CRITICAL — entity relationships)
-5. **Components** → validate
-6. **External APIs** → validate (skip if N/A)
-7. **Core Workflows** → validate
-8. **REST API Spec** → validate
-9. **Database Schema** → validate
-10. **Source Tree** → validate
-11. **Infrastructure** → validate
-12. **Error Handling** → validate
-13. **Coding Standards** → validate
-14. **Test Strategy** → validate
-15. **Security** → validate (CRITICAL)
-
-#### Step 3: Write Sharded Files
-
-After user approves each section, write directly to individual files:
-
-```
-docs/architecture/
-├── index.md                         # Table of contents with links
-├── introduction.md                  # Intro, changelog, PRD reference
-├── high-level-architecture.md       # Summary, diagram, patterns
-├── tech-stack.md                    # SINGLE SOURCE OF TRUTH
-├── data-models.md                   # Entities, relationships, interfaces
-├── components.md                    # Services, modules, diagrams
-├── external-apis.md                 # Third-party integrations
-├── core-workflows.md                # Sequence diagrams
-├── rest-api-spec.md                 # Endpoints, auth, response format
-├── database-schema.md               # Collections, indexes, ERD
-├── source-tree.md                   # Project folder structure
-├── infrastructure-and-deployment.md # CI/CD, environments, rollback
-├── error-handling-strategy.md       # Error patterns, logging
-├── coding-standards.md              # Naming, rules, linting
-├── test-strategy-and-standards.md   # Testing approach, coverage
-├── security.md                      # Auth, RBAC, secrets, API security
-├── checklist-results-report.md      # Optional
-└── next-steps.md                    # Development handoff
-```
-
-**HEADING RULE**: Each file uses `#` (H1) as its top heading. Subsections use `##`, `###`, etc.
-
-**INDEX FORMAT** (`docs/architecture/index.md`):
-```markdown
+````markdown
 # {Project Name} Architecture Document
 
-## Table of Contents
+## Introduction
 
-- [Introduction](./introduction.md)
-- [High Level Architecture](./high-level-architecture.md)
-- [Tech Stack](./tech-stack.md) — SINGLE SOURCE OF TRUTH
-- [Data Models](./data-models.md)
-- [Components](./components.md)
-- [External APIs](./external-apis.md)
-- [Core Workflows](./core-workflows.md)
-- [REST API Spec](./rest-api-spec.md)
-- [Database Schema](./database-schema.md)
-- [Source Tree](./source-tree.md)
-- [Infrastructure and Deployment](./infrastructure-and-deployment.md)
-- [Error Handling Strategy](./error-handling-strategy.md)
-- [Coding Standards](./coding-standards.md)
-- [Test Strategy and Standards](./test-strategy-and-standards.md)
-- [Security](./security.md)
-- [Checklist Results Report](./checklist-results-report.md)
-- [Next Steps](./next-steps.md)
+This document defines the technical architecture for {project_name}.
+
+**PRD Reference:** docs/prd.md
+
+### Starter Template or Existing Project
+
+{Yes/No - specify if yes, or N/A}
+
+### Change Log
+
+| Date    | Version | Description          | Author   |
+| ------- | ------- | -------------------- | -------- |
+| {today} | 1.0     | Initial architecture | @planner |
+
+## High Level Architecture
+
+### Technical Summary
+
+[3-5 sentences overview]
+
+### High Level Overview
+
+[Architectural style, repository structure, service architecture]
+
+### High Level Project Diagram
+
+```mermaid
+graph TD
+    A[Client] --> B[API]
+    B --> C[Service]
+    C --> D[Database]
+```
+````
+
+### Architectural and Design Patterns
+
+- **Pattern 1:** [Description] - _Rationale:_ [Why]
+- **Pattern 2:** [Description] - _Rationale:_ [Why]
+
+## Tech Stack
+
+### Cloud Infrastructure
+
+- **Provider:** {provider}
+- **Key Services:** {services}
+- **Deployment Regions:** {regions}
+
+### Technology Stack Table
+
+| Category | Technology | Version  | Purpose | Rationale   |
+| -------- | ---------- | -------- | ------- | ----------- |
+| Language | TypeScript | 5.x      | Primary | Type safety |
+| Runtime  | Node.js    | 20.x LTS | Server  | Stability   |
+| ...      | ...        | ...      | ...     | ...         |
+
+## Data Models
+
+### {EntityName}
+
+**Purpose:** {description}
+
+**Key Attributes:**
+
+- id: string (PK)
+- {attribute}: {type}
+- createdAt: timestamp
+- updatedAt: timestamp
+
+**Relationships:**
+
+- {relationship}
+
+### TypeScript Interfaces
+
+```typescript
+interface EntityName {
+  id: string;
+  // ...
+}
 ```
 
-**MAX 200 LINES PER FILE**: If any section exceeds 200 lines, split into sub-files.
+## Components
 
-#### Step 4: Generate Module Graph
+### {ComponentName}
 
-**Template:** `.bmad-lite/templates/module-graph.yaml`
-**Output:** `docs/module-graph.md`
+**Responsibility:** {description}
+**Key Interfaces:** {APIs}
+**Dependencies:** {other components}
+**Technology Stack:** {tech}
 
-After ALL architecture sections are written, generate the module relationship graph:
+### Component Diagrams
 
-1. **Derive modules** from completed architecture files:
-   - `data-models.md` → entities become modules
-   - `components.md` → services/modules grouped by domain
-   - `core-workflows.md` → dependencies between modules
-   - `high-level-architecture.md` → domain grouping for subgraphs
-2. **Build Mermaid diagram** (`graph TB`):
-   - One `subgraph` per business domain
-   - Nodes for each module with key detail labels
-   - Solid arrows (`-->`) for direct dependencies
-   - Dotted arrows (`-.->`) for indirect/optional dependencies
-3. **Build Module Details tables** (one per domain):
-   - Key Files from `source-tree.json`
-   - Related Stories from `docs/prd/epic-list.md` (or `[TODO]` if PRD not yet created)
-4. **Add Shared/Cross-cutting table** if applicable
-5. **Add "How to Use This Graph"** guide section
-6. **Present to user for validation** → write `docs/module-graph.md`
+```mermaid
+graph LR
+    A[Component] --> B[Component]
+```
 
-**CRITICAL:** This file is the ENTRY POINT for all future feature work. It MUST be created.
+## External APIs
 
-#### Step 5: Confirm Completion
+### {API Name} API
 
-- List all files created with line counts (architecture + module-graph)
-- Confirm index.md links are correct
+- **Purpose:** {why}
+- **Documentation:** {url}
+- **Authentication:** {method}
+- **Rate Limits:** {limits}
+
+[Or "No external API integrations required."]
+
+## Core Workflows
+
+### {Workflow Name}
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant DB
+    User->>API: Request
+    API->>DB: Query
+    DB-->>API: Result
+    API-->>User: Response
+```
+
+## REST API Spec
+
+### API Style
+
+{REST | GraphQL | tRPC}
+
+### Base URL
+
+`/api/v1`
+
+### Authentication
+
+{JWT | Session | OAuth2}
+
+### Endpoints
+
+#### {Resource}
+
+| Method | Endpoint    | Description | Auth |
+| ------ | ----------- | ----------- | ---- |
+| GET    | /{resource} | List        | Yes  |
+| POST   | /{resource} | Create      | Yes  |
+
+## Database Schema
+
+### Tables/Collections
+
+#### {table_name}
+
+| Column | Type | Constraints | Description |
+| ------ | ---- | ----------- | ----------- |
+| id     | UUID | PK          | Primary key |
+
+### Indexes
+
+- {index}
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    User ||--o{ Order : places
+```
+
+## Source Tree
+
+```
+project-root/
+├── src/
+│   ├── components/
+│   ├── services/
+│   ├── models/
+│   └── utils/
+├── tests/
+└── docs/
+```
+
+## Infrastructure and Deployment
+
+### Infrastructure as Code
+
+- **Tool:** {Terraform | CDK}
+- **Location:** `/infrastructure`
+
+### Deployment Strategy
+
+- **Strategy:** {Blue-Green | Rolling}
+- **CI/CD Platform:** {GitHub Actions}
+
+### Environments
+
+- **Development:** {description}
+- **Staging:** {description}
+- **Production:** {description}
+
+### Environment Promotion Flow
+
+```
+Development → Staging → Production
+```
+
+### Rollback Strategy
+
+- **Primary Method:** {method}
+- **Trigger Conditions:** {triggers}
+
+## Error Handling Strategy
+
+### General Approach
+
+- **Error Model:** {model}
+- **Exception Hierarchy:** {structure}
+
+### Logging Standards
+
+- **Library:** {library}
+- **Format:** {JSON | text}
+- **Levels:** DEBUG, INFO, WARN, ERROR
+
+### Error Handling Patterns
+
+#### External API Errors
+
+- **Retry Policy:** {strategy}
+- **Circuit Breaker:** {config}
+
+#### Business Logic Errors
+
+- **Custom Exceptions:** {types}
+- **Error Codes:** {system}
+
+## Coding Standards
+
+### Core Standards
+
+- **Languages & Runtimes:** {versions}
+- **Style & Linting:** ESLint + Prettier
+
+### Naming Conventions
+
+| Element    | Convention | Example         |
+| ---------- | ---------- | --------------- |
+| Files      | kebab-case | user-service.ts |
+| Components | PascalCase | UserProfile.tsx |
+
+### Critical Rules
+
+- **Rule 1:** {description}
+- **Rule 2:** {description}
+
+## Test Strategy and Standards
+
+### Testing Philosophy
+
+- **Approach:** {TDD | Test-After}
+- **Coverage Goals:** {targets}
+
+### Test Types and Organization
+
+#### Unit Tests
+
+- **Framework:** {framework}
+- **Location:** `tests/unit/`
+
+#### Integration Tests
+
+- **Scope:** {coverage}
+- **Location:** `tests/integration/`
+
+### Test Data Management
+
+- **Strategy:** {approach}
+- **Fixtures:** {location}
+
+## Security
+
+### Input Validation
+
+- **Library:** {library}
+- **Required Rules:** whitelist approach
+
+### Authentication & Authorization
+
+- **Auth Method:** {JWT | Session}
+- **Session Management:** {approach}
+
+### Secrets Management
+
+- **Development:** .env (git-ignored)
+- **Production:** {secrets service}
+- **Code Requirements:** NEVER hardcode
+
+### API Security
+
+- **Rate Limiting:** {implementation}
+- **CORS Policy:** {config}
+- **HTTPS Enforcement:** Required
+
+### Data Protection
+
+- **Encryption at Rest:** {approach}
+- **Encryption in Transit:** TLS 1.3
+
+## Checklist Results Report
+
+[Results or "Skipped"]
+
+## Next Steps
+
+### Frontend Architecture (if applicable)
+
+[Prompt for frontend architecture]
+
+### Development
+
+1. Run `@executor draft-story` to create first story
+2. Track progress in `docs/progress.md`
+
+```
+
+#### Step 3: Validate with User
+- Present COMPLETE draft
+- Focus questions on CRITICAL sections:
+  - **Tech Stack** (SINGLE SOURCE OF TRUTH)
+  - **Data Models** (entity relationships)
+  - **Security** (authentication approach)
 - All tech choices MUST have RATIONALE
-- Confirm `docs/module-graph.md` is created and accurate
-- Remind: Run `/bmad-execute draft` to start development
+- Accept refinements
+
+#### Step 4: Output to File
+- After user approval, write to `docs/architecture.md`
+- Confirm file written successfully
 
 ---
 
@@ -307,17 +628,14 @@ After ALL architecture sections are written, generate the module relationship gr
 
 **Task:** `.bmad-lite/tasks/shard-doc.md`
 
-Split large LEGACY documents into smaller files by H2 sections.
-
-> **NOTE**: `*create-prd` and `*create-architecture` now output directly to sharded folders.
-> `*shard` is only needed for legacy monolith files or custom documents.
+Split large documents into smaller files by H2 sections.
 
 **Usage:**
 ```
 
-*shard prd # Split legacy docs/prd.md → docs/prd/
-*shard architecture # Split legacy docs/architecture.md → docs/architecture/
-\*shard <filepath> # Split any custom document
+*shard prd # Split docs/prd.md → docs/prd/
+*shard architecture # Split docs/architecture.md → docs/architecture/
+\*shard <filepath> # Split custom document
 
 ````
 
@@ -392,6 +710,68 @@ docs/architecture/
 ├── checklist-results-report.md
 └── next-steps.md
 ```
+
+---
+
+### \*vert-to-v3
+
+**Convert monolith documents to distributed v3 structure (sharding PRD/Architecture/Progress, generating module-graph, archiving monolith files, ignoring them, and updating config.yaml paths automatically).**
+
+#### Step 1: Verify Monolith Files
+- Verify that `docs/prd.md` and/or `docs/architecture.md` exist.
+- If neither exists, report that no monolith files are found to convert.
+
+#### Step 2: Shard Monoliths to v3 Folders
+- If `docs/prd.md` exists:
+  - Run sharding logic (similar to `*shard prd`) to split `docs/prd.md` into `docs/prd/` directory.
+  - Generate `docs/prd/index.md` indexing all section files correctly.
+- If `docs/architecture.md` exists:
+  - Run sharding logic (similar to `*shard architecture`) to split `docs/architecture.md` into `docs/architecture/` directory.
+  - Generate `docs/architecture/index.md` indexing all section files correctly.
+- If `docs/progress.md` or `progress.md` exists:
+  - Shard it to `docs/progress/` folder and generate `docs/progress/index.md`.
+
+#### Step 3: Generate Module Graph
+- Derive system modules and services from `docs/architecture/data-models.md` and `docs/architecture/components.md`.
+- Generate `docs/module-graph.md` using the `.bmad-lite/templates/module-graph.yaml` template:
+  - Build Mermaid diagrams mapping relationships.
+  - Create Module Detail tables per business domain.
+  - Provide domain subgroups and key files.
+
+#### Step 4: Archive Redundant Legacy Files
+- Create the `/docs/archived/` directory if it doesn't already exist.
+- Move the original monolith files from the workspace:
+  - Move `docs/prd.md` to `docs/archived/prd.md`.
+  - Move `docs/architecture.md` to `docs/archived/architecture.md`.
+  - Move `docs/progress.md` or `progress.md` (if existed) to `docs/archived/progress.md`.
+- Print a clear message indicating these files have been archived.
+
+#### Step 5: Ignore Archived Directory
+- Check if `.gitignore` in the root workspace has the `/docs/archived/` or `docs/archived/` entry.
+- If not present, append `docs/archived/` to `.gitignore` to ensure these files are never committed.
+
+#### Step 6: Automatically Update Config Paths
+- Rewrite `.bmad-lite/config.yaml` to point to the new sharded locations:
+  - Change `documents.prd` to `docs/prd/index.md`.
+  - Change `documents.architecture` to `docs/architecture/index.md`.
+  - Change `tracking.progress_file` to `progress/index.md`.
+  - Change `output.mode` to `sharded`.
+  - Update `executor.dev_context_files` to target sharded paths directly:
+    ```yaml
+    dev_context_files:
+      - docs/module-graph.md
+      - docs/architecture/tech-stack.md
+      - docs/architecture/source-tree.md
+      - docs/architecture/source-tree.json
+      - docs/architecture/coding-standards.md
+    ```
+
+#### Step 7: Report Success
+- List all sharded files successfully created in `docs/prd/` and `docs/architecture/`.
+- Show `docs/module-graph.md` creation confirmation.
+- Show the archived monolith paths in `/docs/archived/`.
+- Show that `.gitignore` and `.bmad-lite/config.yaml` were updated.
+- Prompt: "Conversion to v3 complete! You can now start implementation with '/bmad-execute draft'."
 
 ---
 
@@ -587,7 +967,7 @@ docs/architecture/
 
 ## Usage Examples
 
-### Quick PRD Creation (Distributed Output)
+### Quick PRD Creation
 
 ```
 User: Create a PRD for a todo app
@@ -597,143 +977,111 @@ Step 1: Gathering context...
 - No project brief found
 - Loading tech-preferences.md...
 
-Step 2: Drafting sections iteratively...
+Step 2: Drafting PRD with template structure...
 
---- Section 1: Goals & Background ---
+# Todo App Product Requirements Document (PRD)
 
-# Goals and Background Context
+## Goals and Background Context
+[Pre-populated content...]
 
-## Goals
-- Enable users to manage daily tasks with minimal friction
-- Provide cross-device sync for seamless task management
+## Requirements
+[Pre-populated content...]
 
-## Background Context
-Users need a simple, fast task manager...
+[... all required sections with exact titles ...]
 
-## Change Log
-| Date | Version | Description | Author |
-|------|---------|-------------|--------|
-| 2026-04-03 | 1.0 | Initial draft | @planner |
+## Next Steps
+[Handoff prompts...]
 
-→ Approve this section? [approve/modify]
+---
+
+Step 3: Please review the draft above.
+
+CRITICAL sections for your review:
+1. Technical Assumptions - Is the proposed tech stack correct?
+2. Epic List - Does this capture all features?
+3. Requirements - Any missing?
+
+Reply with changes or "approve" to output file.
 
 User: approve
 
-✓ Written: docs/prd/goals-and-background-context.md (25 lines)
+Step 4: Writing to docs/prd.md...
+✓ File written successfully!
 
---- Section 2: Requirements ---
-[... continues section by section ...]
-
---- Section 5: Epic List ---
-[... user approves epic list before detailing ...]
-
---- Section 6: Epic Details ---
-[... each epic drafted and approved individually ...]
-
-Step 3: Writing all files...
-
-✓ docs/prd/index.md (20 lines)
-✓ docs/prd/goals-and-background-context.md (25 lines)
-✓ docs/prd/requirements.md (40 lines)
-✓ docs/prd/user-interface-design-goals.md (35 lines)
-✓ docs/prd/technical-assumptions.md (30 lines)
-✓ docs/prd/epic-list.md (15 lines)
-✓ docs/prd/epic-1-foundation.md (60 lines)
-✓ docs/prd/epic-2-core-features.md (55 lines)
-✓ docs/prd/next-steps.md (10 lines)
-
-Total: 9 files, ~290 lines (avg 32 lines/file)
-
-Next: Run *create-architecture
+Next: Run *create-architecture or *shard prd
 ```
 
-### Architecture from PRD (Distributed Output)
+### Architecture from PRD
 
 ```
 User: Create the architecture
 Planner: *create-architecture
 
-Step 1: Reading sharded PRD...
-- docs/prd/requirements.md → 12 FRs, 6 NFRs
-- docs/prd/technical-assumptions.md → Monorepo, Monolith
-- docs/prd/epic-list.md → 2 epics, 8 stories
+Step 1: Reading docs/prd.md...
+- Found PRD with 2 epics, 8 stories
+- Loading tech-preferences.md...
 
-Step 2: Drafting sections iteratively...
+Step 2: Drafting Architecture with template structure...
 
---- Section 1: Introduction ---
-[... draft + approve ...]
+# Todo App Architecture Document
 
---- Section 3: Tech Stack (CRITICAL) ---
+## Introduction
+[Pre-populated content...]
 
-# Tech Stack
+## High Level Architecture
+[Pre-populated content...]
 
-## Cloud Infrastructure
-- **Provider:** Vercel
-- **Database:** MongoDB Atlas
-
-## Technology Stack Table
+## Tech Stack
 | Category | Technology | Version | Purpose | Rationale |
-|----------|------------|---------|---------|-----------|
-| Framework | Next.js | 15.x | Fullstack | App Router, RSC |
-| Language | TypeScript | 5.x | Primary | Type safety |
+[... table ...]
 
-→ This is the SINGLE SOURCE OF TRUTH. Approve? [approve/modify]
+[... all required sections with exact titles ...]
+
+## Next Steps
+[Development handoff...]
+
+---
+
+Step 3: Please review the draft above.
+
+CRITICAL sections for your review:
+1. Tech Stack - This is the SINGLE SOURCE OF TRUTH
+2. Data Models - Verify entity relationships
+3. Security - Confirm authentication approach
+
+Reply with changes or "approve" to output file.
 
 User: approve
 
-✓ Written: docs/architecture/tech-stack.md (30 lines)
+Step 4: Writing to docs/architecture.md...
+✓ File written successfully!
 
-[... continues section by section ...]
-
-Step 3: All architecture files written:
-
-✓ docs/architecture/index.md
-✓ docs/architecture/introduction.md
-✓ docs/architecture/high-level-architecture.md
-✓ docs/architecture/tech-stack.md (SINGLE SOURCE OF TRUTH)
-✓ docs/architecture/data-models.md
-✓ docs/architecture/components.md
-✓ docs/architecture/rest-api-spec.md
-✓ docs/architecture/database-schema.md
-✓ docs/architecture/source-tree.md
-✓ docs/architecture/infrastructure-and-deployment.md
-✓ docs/architecture/error-handling-strategy.md
-✓ docs/architecture/coding-standards.md
-✓ docs/architecture/test-strategy-and-standards.md
-✓ docs/architecture/security.md
-✓ docs/architecture/next-steps.md
-
-Step 4: Generating Module Graph...
-- Deriving modules from data-models + components...
-- Building Mermaid diagram with domain subgraphs...
-- Populating Key Files from source-tree.json...
-- Linking stories from PRD epic-list...
-
-✓ docs/module-graph.md (READ THIS FIRST for future features)
-
-Total: 16 files, ~500 lines (avg 31 lines/file)
-
-Next: Run /bmad-execute draft to start development
+Next: Run *shard architecture or start development
 ```
 
-### Shard Legacy Documents
-
-> Only needed for old monolith files. New projects use distributed output by default.
+### Shard Documents
 
 ```
-User: Shard a legacy PRD
-Planner: *shard docs/old-prd.md
+User: Shard the PRD
+Planner: *shard prd
 
-Splitting by H2 sections...
+Attempting md-tree explode...
+$ md-tree explode docs/prd.md docs/prd
 
 Document sharded successfully:
-- Source: docs/old-prd.md
-- Destination: docs/old-prd/
+- Source: docs/prd.md
+- Destination: docs/prd/
 - Files created: 10
   ✓ index.md
   ✓ goals-and-background-context.md
   ✓ requirements.md
-  ...
+  ✓ user-interface-design-goals.md
+  ✓ technical-assumptions.md
+  ✓ epic-list.md
+  ✓ epic-1-foundation.md
+  ✓ epic-2-core-features.md
+  ✓ checklist-results-report.md
+  ✓ next-steps.md
 ```
 
 ---
@@ -744,6 +1092,5 @@ Dependencies map to `.bmad-lite/{type}/{name}`:
 
 - templates/prd.yaml → .bmad-lite/templates/prd.yaml
 - templates/architecture.yaml → .bmad-lite/templates/architecture.yaml
-- templates/module-graph.yaml → .bmad-lite/templates/module-graph.yaml
 - tasks/shard-doc.md → .bmad-lite/tasks/shard-doc.md
 - checklists/planning-checklist.md → .bmad-lite/checklists/planning-checklist.md

@@ -10,14 +10,14 @@ project:
 
 # Document Locations
 documents:
-  prd: docs/prd/index.md              # Sharded - see docs/prd/ folder
-  architecture: docs/architecture/index.md  # Sharded - see docs/architecture/ folder
+  prd: docs/prd.md
+  architecture: docs/architecture.md
   epics_folder: docs/epics/
 
 # Task Tracking
 tracking:
   location: docs/
-  progress_file: progress/index.md    # Sharded - see docs/progress/ folder
+  progress_file: progress.md
   story_location: stories/
   story_pattern: "{epic}.{story}.md"  # e.g., 1.1.md, 1.2.md
 
@@ -37,11 +37,14 @@ agents:
     templates:
       - story.yaml
     dev_context_files:  # Always load these for dev context
-      - docs/module-graph.md               # READ FIRST - module relationships
-      - docs/architecture/tech-stack.md     # SINGLE SOURCE OF TRUTH
-      - docs/architecture/source-tree.md    # Folder-level overview
-      - docs/architecture/source-tree.json  # Exact file paths
-      - docs/architecture/coding-standards.md
+      - docs/module-graph.md               # READ FIRST - module relationships (if sharded/exists)
+      - docs/architecture.md#tech-stack     # SINGLE SOURCE OF TRUTH (monolith)
+      - docs/architecture/tech-stack.md    # SINGLE SOURCE OF TRUTH (sharded)
+      - docs/architecture.md#source-tree    # Folder-level overview (monolith)
+      - docs/architecture/source-tree.md   # Folder-level overview (sharded)
+      - docs/architecture/source-tree.json # Exact file paths (if sharded)
+      - docs/architecture.md#coding-standards # Coding standards (monolith)
+      - docs/architecture/coding-standards.md # Coding standards (sharded)
 
   reviewer:
     file: .bmad-lite/agents/reviewer.md
@@ -103,8 +106,8 @@ output:
   # Use markdown for all documents
   format: markdown
 
-  # Distributed output mode: each section → separate file (NOT monolith)
-  mode: sharded
+  # Monolith output mode by default for Greenfield. Converts to sharded via *vert-to-v3
+  mode: monolith
 
   # Max lines per file before splitting further
   max_lines_per_file: 200
