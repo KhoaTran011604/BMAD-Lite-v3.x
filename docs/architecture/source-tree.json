@@ -3,6 +3,8 @@
     "package.json",
     "tsconfig.json",
     "next.config.js",
+    "docs/stories/4.1.live-stock-on-hand-view.md",
+    "docs/stories/4.2.low-stock-and-expiration-alerts.md",
     "src/lib/dbConnect.ts",
     "src/lib/utils.ts",
     "src/models/Material.ts",

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import Material from '@/models/Material';
+import Import from '@/models/Import';
+import Export from '@/models/Export';
+import { buildDashboardSummary } from '@/lib/utils';
 import { z } from 'zod';
 
 export interface IApiResponse<T> {
@@ -25,6 +28,23 @@ const CreateMaterialSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
+
+    const view = req.nextUrl.searchParams.get('view');
+
+    if (view === 'dashboard') {
+      const [materials, imports, exports] = await Promise.all([
+        Material.find({}).sort({ name: 1 }),
+        Import.find({}).sort({ date: -1 }),
+        Export.find({}).sort({ date: -1 }),
+      ]);
+
+      const dashboardSummary = buildDashboardSummary(materials, imports, exports);
+      const response: IApiResponse<typeof dashboardSummary> = {
+        data: dashboardSummary,
+      };
+
+      return NextResponse.json(response);
+    }
 
     // Query all materials, sorted alphabetically by name
     const materials = await Material.find({}).sort({ name: 1 });

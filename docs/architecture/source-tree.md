@@ -3,9 +3,12 @@
 ```
 project-root/
 ├── .bmad-lite/          # BMAD-Lite configurations and guidelines
-├── docs/                # Monolithic requirements and architecture documentation
+├── docs/                # Requirements, architecture, and planning documentation
 │   ├── prd.md
-│   └── project-brief.md
+│   ├── project-brief.md
+│   └── stories/         # Drafted implementation-ready story documents
+│       └── 4.1.live-stock-on-hand-view.md
+│       └── 4.2.low-stock-and-expiration-alerts.md
 ├── src/
 │   ├── app/             # Next.js App Router
 │   │   ├── layout.tsx   # Global styling and Outfit font injection

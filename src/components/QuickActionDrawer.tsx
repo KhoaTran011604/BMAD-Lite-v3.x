@@ -266,6 +266,7 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.imports.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       handleClose();
     },
   });
@@ -291,6 +292,7 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.exports.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       handleClose();
     },
   });

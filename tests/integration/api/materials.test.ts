@@ -3,6 +3,8 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import { GET, POST } from '@/app/api/materials/route';
 import Material from '@/models/Material';
+import Import from '@/models/Import';
+import Export from '@/models/Export';
 import { NextRequest } from 'next/server';
 
 let mongoServer: MongoMemoryServer;
@@ -26,6 +28,8 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  await Import.deleteMany({});
+  await Export.deleteMany({});
   await Material.deleteMany({});
 });
 
@@ -132,5 +136,64 @@ describe('Materials API Integration Tests', () => {
     expect(body.data[0].name).toBe('Apple Tree Seeds');
     expect(body.data[1].name).toBe('Banana Fertilizer');
     expect(body.data[2].name).toBe('Cabbage Seeds');
+  });
+
+  it('GET /api/materials?view=dashboard - should return dashboard metrics and alert-ranked stock items', async () => {
+    const nearExpiryDate = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const outsideWindowDate = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000);
+
+    const [riceSeed, nutrientMix] = await Material.create([
+      { name: 'Rice Seed', type: 'Seeds', uom: 'kg', safetyStock: 10, currentStock: 12 },
+      { name: 'Nutrient Mix', type: 'Fertilizers', uom: 'bags', safetyStock: 5, currentStock: 2 },
+    ]);
+
+    await Import.create([
+      {
+        date: new Date('2026-05-01T09:00:00.000Z'),
+        supplierName: 'Seed Source',
+        materialId: riceSeed._id,
+        quantity: 12,
+        unitPrice: 5,
+        batchCode: 'SEED-45D',
+        expirationDate: outsideWindowDate,
+      },
+      {
+        date: new Date('2026-05-03T09:00:00.000Z'),
+        supplierName: 'Field Supply',
+        materialId: nutrientMix._id,
+        quantity: 2,
+        unitPrice: 20,
+        batchCode: 'NPK-10D',
+        expirationDate: nearExpiryDate,
+      },
+    ]);
+
+    await Export.create({
+      date: new Date('2026-05-05T09:00:00.000Z'),
+      requesterName: 'Field A',
+      materialId: nutrientMix._id,
+      quantity: 1,
+      destinationPurpose: 'Soil treatment',
+    });
+
+    const req = new NextRequest('http://localhost/api/materials?view=dashboard');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.data.totalMaterials).toBe(2);
+    expect(body.data.activeAlerts).toBe(1);
+    expect(body.data.totalPortfolioValue).toBe(100);
+    expect(body.data.stockItems[0].name).toBe('Nutrient Mix');
+    expect(body.data.stockItems[0].alertStatus).toBe('low');
+    expect(body.data.stockItems[0].totalExportedQuantity).toBe(1);
+    expect(body.data.stockItems[1].name).toBe('Rice Seed');
+    expect(body.data.lowStockWarnings).toHaveLength(1);
+    expect(body.data.lowStockWarnings[0].name).toBe('Nutrient Mix');
+    expect(body.data.nearExpiryAlerts).toHaveLength(1);
+    expect(body.data.nearExpiryAlerts[0].batchCode).toBe('NPK-10D');
+    expect(body.data.nearExpiryAlerts[0].daysRemaining).toBeGreaterThanOrEqual(0);
+    expect(body.data.nearExpiryAlerts[0].daysRemaining).toBeLessThanOrEqual(30);
   });
 });
