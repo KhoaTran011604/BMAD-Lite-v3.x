@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+
 import { queryKeys } from '@/lib/utils';
 
-// Standard TypeScript definitions conforming to docs/architecture/data-models.md
 export type MaterialType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Tools';
+export type TransactionMode = 'import' | 'export';
 
 export interface IMaterial {
   _id: string;
@@ -30,26 +31,158 @@ export interface IApiResponse<T> {
   };
 }
 
-// Zod validation base schema for recording an import transaction
-const ImportBaseSchema = z.object({
-  materialId: z.string({ required_error: 'Please select a catalog supply item' }).min(1, 'Please select a catalog supply item'),
-  supplierName: z.string({ required_error: 'Supplier name is required' }).trim().min(1, 'Supplier name cannot be empty'),
+export interface ImportFormValues {
+  transactionMode: 'import';
+  materialId: string;
+  supplierName: string;
+  quantity: number;
+  unitPrice: number;
+  date: string;
+  batchCode?: string;
+  expirationDate?: string;
+}
+
+export interface ExportFormValues {
+  transactionMode: 'export';
+  materialId: string;
+  requesterName: string;
+  quantity: number;
+  date: string;
+  destinationPurpose: string;
+}
+
+const parseNumberInput = (value: unknown): number | undefined => {
+  if (
+    value === '' ||
+    value === undefined ||
+    value === null ||
+    (typeof value === 'number' && Number.isNaN(value))
+  ) {
+    return undefined;
+  }
+
+  return Number(value);
+};
+
+const transactionModeSchema = z.enum(['import', 'export']);
+
+const baseTransactionSchema = z.object({
+  transactionMode: transactionModeSchema,
+  materialId: z
+    .string({ required_error: 'Please select a catalog supply item' })
+    .min(1, 'Please select a catalog supply item'),
   quantity: z.preprocess(
-    (val) => (val === '' || val === undefined ? undefined : Number(val)),
-    z.number({ required_error: 'Quantity is required', invalid_type_error: 'Quantity must be a positive number' })
+    parseNumberInput,
+    z
+      .number({
+        required_error: 'Quantity is required',
+        invalid_type_error: 'Quantity must be a positive number',
+      })
       .positive('Quantity must be greater than zero')
   ),
+  date: z
+    .string({ required_error: 'Transaction date is required' })
+    .min(1, 'Transaction date is required'),
+  supplierName: z.string().optional(),
   unitPrice: z.preprocess(
-    (val) => (val === '' || val === undefined ? undefined : Number(val)),
-    z.number({ required_error: 'Unit Price is required', invalid_type_error: 'Unit Price must be a positive number' })
+    parseNumberInput,
+    z
+      .number({
+        invalid_type_error: 'Unit Price must be a positive number',
+      })
       .positive('Unit Price must be greater than zero')
+      .optional()
   ),
-  date: z.string({ required_error: 'Transaction date is required' }).min(1, 'Transaction date is required'),
   batchCode: z.string().optional(),
   expirationDate: z.string().optional(),
+  requesterName: z.string().optional(),
+  destinationPurpose: z.string().optional(),
 });
 
-type ImportFormValues = z.infer<typeof ImportBaseSchema>;
+export type TransactionFormValues = z.infer<typeof baseTransactionSchema>;
+
+const isChemicalMaterial = (material: IMaterial | undefined): boolean =>
+  material?.type === 'Pesticides' || material?.type === 'Fertilizers';
+
+export const createTransactionSchema = (getMaterials: () => IMaterial[]) =>
+  baseTransactionSchema.superRefine((data, ctx) => {
+    const selectedMaterial = getMaterials().find((material: IMaterial) => material._id === data.materialId);
+
+    if (data.transactionMode === 'import') {
+      if (!data.supplierName || data.supplierName.trim() === '') {
+        ctx.addIssue({
+          path: ['supplierName'],
+          code: z.ZodIssueCode.custom,
+          message: 'Supplier name cannot be empty',
+        });
+      }
+
+      if (typeof data.unitPrice !== 'number' || Number.isNaN(data.unitPrice)) {
+        ctx.addIssue({
+          path: ['unitPrice'],
+          code: z.ZodIssueCode.custom,
+          message: 'Unit Price is required',
+        });
+      }
+
+      if (isChemicalMaterial(selectedMaterial)) {
+        if (!data.batchCode || data.batchCode.trim() === '') {
+          ctx.addIssue({
+            path: ['batchCode'],
+            code: z.ZodIssueCode.custom,
+            message: 'Batch code is required for chemical supply items',
+          });
+        }
+
+        if (!data.expirationDate || data.expirationDate.trim() === '') {
+          ctx.addIssue({
+            path: ['expirationDate'],
+            code: z.ZodIssueCode.custom,
+            message: 'Expiration date is required for chemical supply items',
+          });
+        }
+      }
+    }
+
+    if (data.transactionMode === 'export') {
+      if (!data.requesterName || data.requesterName.trim() === '') {
+        ctx.addIssue({
+          path: ['requesterName'],
+          code: z.ZodIssueCode.custom,
+          message: 'Requester name cannot be empty',
+        });
+      }
+
+      if (!data.destinationPurpose || data.destinationPurpose.trim() === '') {
+        ctx.addIssue({
+          path: ['destinationPurpose'],
+          code: z.ZodIssueCode.custom,
+          message: 'Purpose/Destination is required',
+        });
+      }
+
+      if (selectedMaterial && data.quantity > selectedMaterial.currentStock) {
+        ctx.addIssue({
+          path: ['quantity'],
+          code: z.ZodIssueCode.custom,
+          message: 'Insufficient Stock',
+        });
+      }
+    }
+  });
+
+const createDefaultValues = (): TransactionFormValues => ({
+  transactionMode: 'import',
+  materialId: '',
+  supplierName: '',
+  quantity: undefined as unknown as number,
+  unitPrice: undefined,
+  date: new Date().toISOString().split('T')[0],
+  batchCode: '',
+  expirationDate: '',
+  requesterName: '',
+  destinationPurpose: '',
+});
 
 interface QuickActionDrawerProps {
   isOpen: boolean;
@@ -62,179 +195,219 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const drawerRef = useRef<HTMLDivElement>(null);
+  const materialsRef = useRef<IMaterial[]>([]);
 
-  // TanStack Query to fetch active catalog items
   const { data: materialsData, isLoading: isMaterialsLoading } = useQuery<IApiResponse<IMaterial[]>, Error>({
     queryKey: queryKeys.materials.all,
     queryFn: async (): Promise<IApiResponse<IMaterial[]>> => {
-      const res = await fetch('/api/materials');
-      if (!res.ok) {
+      const response = await fetch('/api/materials');
+
+      if (!response.ok) {
         throw new Error('Failed to load catalog supply list');
       }
-      return res.json();
+
+      return response.json();
     },
   });
 
-  const materials = materialsData?.data || [];
+  const materials: IMaterial[] = materialsData?.data ?? [];
+  materialsRef.current = materials;
 
-  // Dynamic Zod Validation Schema Refinement (Rule 3: Dual-Layer Data Validation)
-  // Evaluates selected material category: chemical types (Pesticides/Fertilizers) strictly enforce Batch Code and Expiration Date
-  const dynamicSchema = ImportBaseSchema.superRefine((data, ctx) => {
-    const selected = materials.find((m) => m._id === data.materialId);
-    const isChemical = selected && (selected.type === 'Pesticides' || selected.type === 'Fertilizers');
+  const transactionSchema = useMemo(
+    () => createTransactionSchema(() => materialsRef.current),
+    []
+  );
 
-    if (isChemical) {
-      if (!data.batchCode || data.batchCode.trim() === '') {
-        ctx.addIssue({
-          path: ['batchCode'],
-          code: z.ZodIssueCode.custom,
-          message: 'Batch code is required for chemical supply items',
-        });
-      }
-      if (!data.expirationDate || data.expirationDate.trim() === '') {
-        ctx.addIssue({
-          path: ['expirationDate'],
-          code: z.ZodIssueCode.custom,
-          message: 'Expiration date is required for chemical supply items',
-        });
-      }
-    }
-  });
-
-  // React Hook Form Configuration
   const {
     register,
     handleSubmit,
     reset,
     setValue,
     watch,
+    trigger,
     formState: { errors },
-  } = useForm<ImportFormValues>({
-    resolver: zodResolver(dynamicSchema),
-    defaultValues: {
-      materialId: '',
-      supplierName: '',
-      quantity: '' as unknown as number,
-      unitPrice: '' as unknown as number,
-      date: new Date().toISOString().split('T')[0],
-      batchCode: '',
-      expirationDate: '',
-    },
+  } = useForm<TransactionFormValues>({
+    resolver: zodResolver(transactionSchema),
+    defaultValues: createDefaultValues(),
   });
 
-  // Watch fields for dynamic form rendering state
+  const transactionMode = watch('transactionMode');
   const watchedMaterialId = watch('materialId');
-  const selectedMaterial = materials.find((m) => m._id === watchedMaterialId);
-  const isChemical = selectedMaterial && (selectedMaterial.type === 'Pesticides' || selectedMaterial.type === 'Fertilizers');
+  const watchedQuantity = watch('quantity');
+  const selectedMaterial = materials.find((material: IMaterial) => material._id === watchedMaterialId);
+  const isChemical = transactionMode === 'import' && isChemicalMaterial(selectedMaterial);
+  const stockError =
+    transactionMode === 'export' &&
+    selectedMaterial &&
+    typeof watchedQuantity === 'number' &&
+    !Number.isNaN(watchedQuantity) &&
+    watchedQuantity > selectedMaterial.currentStock
+      ? 'Insufficient Stock'
+      : undefined;
 
-  // TanStack Query Mutation for recording a delivery (Rule 6: Pure decoupled side effects)
   const importMutation = useMutation<IApiResponse<unknown>, Error, ImportFormValues>({
     mutationFn: async (newImport) => {
-      const res = await fetch('/api/imports', {
+      const response = await fetch('/api/imports', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-role': 'FarmManager', // Simulated admin authentication header credentials
+          'x-user-role': 'FarmManager',
         },
         body: JSON.stringify(newImport),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to record import delivery');
+
+      if (!response.ok) {
+        const payload: { error?: string } = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to record import delivery');
       }
-      return res.json();
+
+      return response.json();
     },
     onSuccess: () => {
-      // Invalidate queries to trigger real-time stock and feed updates
       queryClient.invalidateQueries({ queryKey: queryKeys.imports.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
       handleClose();
     },
   });
 
-  const onSubmit = (values: ImportFormValues) => {
-    importMutation.mutate(values);
-  };
+  const exportMutation = useMutation<IApiResponse<unknown>, Error, ExportFormValues>({
+    mutationFn: async (newExport) => {
+      const response = await fetch('/api/exports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': 'FarmManager',
+        },
+        body: JSON.stringify(newExport),
+      });
+
+      if (!response.ok) {
+        const payload: { error?: string } = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to record export transaction');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.exports.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
+      handleClose();
+    },
+  });
 
   const handleClose = () => {
-    reset({
-      materialId: '',
-      supplierName: '',
-      quantity: '' as unknown as number,
-      unitPrice: '' as unknown as number,
-      date: new Date().toISOString().split('T')[0],
-      batchCode: '',
-      expirationDate: '',
-    });
+    reset(createDefaultValues());
     setSearchTerm('');
     setIsDropdownOpen(false);
     importMutation.reset();
+    exportMutation.reset();
     onClose();
   };
 
-  // Keyboard navigation Escape listener (Accessibility Mandate)
+  const handleModeChange = (mode: TransactionMode) => {
+    setValue('transactionMode', mode, { shouldDirty: true, shouldValidate: true });
+    setIsDropdownOpen(false);
+    setSearchTerm('');
+    importMutation.reset();
+    exportMutation.reset();
+    void trigger();
+  };
+
+  const onSubmit = (values: TransactionFormValues) => {
+    if (values.transactionMode === 'import') {
+      importMutation.mutate({
+        transactionMode: 'import',
+        materialId: values.materialId,
+        supplierName: values.supplierName ?? '',
+        quantity: values.quantity,
+        unitPrice: values.unitPrice ?? 0,
+        date: values.date,
+        batchCode: values.batchCode?.trim() ? values.batchCode.trim() : undefined,
+        expirationDate: values.expirationDate?.trim() ? values.expirationDate : undefined,
+      });
+
+      return;
+    }
+
+    exportMutation.mutate({
+      transactionMode: 'export',
+      materialId: values.materialId,
+      requesterName: values.requesterName ?? '',
+      quantity: values.quantity,
+      date: values.date,
+      destinationPurpose: values.destinationPurpose ?? '',
+    });
+  };
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
         handleClose();
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Click outside custom select selector to close dropdown
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
+        !dropdownRef.current.contains(event.target as Node) &&
         triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node)
+        !triggerRef.current.contains(event.target as Node)
       ) {
         setIsDropdownOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Set focus on dropdown trigger when open (Accessibility Focus Trap helper)
   useEffect(() => {
     if (isOpen && triggerRef.current) {
       triggerRef.current.focus();
     }
   }, [isOpen]);
 
-  const filteredMaterials = materials.filter((material) =>
+  useEffect(() => {
+    if (transactionMode === 'export') {
+      void trigger('quantity');
+    }
+  }, [transactionMode, watchedMaterialId, watchedQuantity, trigger]);
+
+  const filteredMaterials = materials.filter((material: IMaterial) =>
     material.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const apiError = importMutation.error?.message;
-  const isSaving = importMutation.isPending;
+  const activeMutation = transactionMode === 'import' ? importMutation : exportMutation;
+  const apiError = activeMutation.error?.message;
+  const isSaving = activeMutation.isPending;
+  const submitLabel = transactionMode === 'import' ? 'Record Delivery' : 'Record Export';
+  const loadingLabel = transactionMode === 'import' ? 'Recording Delivery...' : 'Recording Export...';
+  const drawerTitle = transactionMode === 'import' ? 'Log Supply Transaction' : 'Log Export Transaction';
+  const quantityLabel = transactionMode === 'import' ? 'Quantity Imported' : 'Quantity to Export';
 
   return (
     <>
-      {/* Dimmed Blurred Overlay */}
-      <div 
-        className={`drawer-overlay ${isOpen ? 'open' : ''}`} 
-        onClick={handleClose} 
+      <div
+        className={`drawer-overlay ${isOpen ? 'open' : ''}`}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
-      {/* Slide-in Content Panel */}
-      <div 
+      <div
         className={`drawer-content ${isOpen ? 'open' : ''}`}
-        ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
       >
         <div className="drawer-header">
-          <h2 id="drawer-title">Log Supply Transaction</h2>
-          <button 
-            className="drawer-close-btn" 
+          <h2 id="drawer-title">{drawerTitle}</h2>
+          <button
+            className="drawer-close-btn"
             onClick={handleClose}
             aria-label="Close drawer panel"
           >
@@ -246,41 +419,63 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
         </div>
 
         <div className="drawer-body">
-          {/* Tabs for Future proofing */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-            <button 
-              className="glass-btn glass-btn-primary" 
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              marginBottom: '2rem',
+              borderBottom: '1px solid var(--border)',
+              paddingBottom: '0.75rem',
+            }}
+            role="tablist"
+            aria-label="Transaction mode"
+          >
+            <button
+              className={transactionMode === 'import' ? 'glass-btn glass-btn-primary' : 'glass-btn'}
               style={{ borderRadius: '9999px', padding: '0.4rem 1.25rem', fontSize: '0.8rem' }}
               type="button"
+              role="tab"
+              aria-selected={transactionMode === 'import'}
+              aria-controls="transaction-form-panel"
+              onClick={() => handleModeChange('import')}
             >
-              🌱 Import Supplies
+              Import
             </button>
-            <button 
-              className="glass-btn" 
-              style={{ borderRadius: '9999px', padding: '0.4rem 1.25rem', fontSize: '0.8rem', opacity: 0.5, cursor: 'not-allowed' }}
+            <button
+              className={transactionMode === 'export' ? 'glass-btn glass-btn-primary' : 'glass-btn'}
+              style={{ borderRadius: '9999px', padding: '0.4rem 1.25rem', fontSize: '0.8rem' }}
               type="button"
-              disabled
-              title="Disbursements Export UI coming in Epic 3"
+              role="tab"
+              aria-selected={transactionMode === 'export'}
+              aria-controls="transaction-form-panel"
+              onClick={() => handleModeChange('export')}
             >
-              🚜 Export (Soon)
+              Export
             </button>
           </div>
 
-          {/* Form Boundary */}
-          <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <form
+            id="transaction-form-panel"
+            onSubmit={handleSubmit(onSubmit)}
+            noValidate
+            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+          >
             {apiError && (
-              <div style={{ 
-                color: 'var(--danger)', 
-                fontSize: '0.85rem', 
-                marginBottom: '1.5rem', 
-                backgroundColor: 'var(--danger-glow)', 
-                padding: '0.75rem 1rem', 
-                borderRadius: '8px', 
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
+              <div
+                style={{
+                  color: 'var(--danger)',
+                  fontSize: '0.85rem',
+                  marginBottom: '1.5rem',
+                  backgroundColor: 'var(--danger-glow)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+                role="alert"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -290,7 +485,6 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
               </div>
             )}
 
-            {/* Form Group: Material Dropdown Selector */}
             <div className="form-group">
               <label id="material-select-label">
                 Supply Material Item <span className="required-indicator">*</span>
@@ -323,8 +517,8 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                         className="glass-input"
                         style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
                         aria-label="Filter supply items"
                         autoFocus
                       />
@@ -339,13 +533,14 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                           No materials found
                         </div>
                       ) : (
-                        filteredMaterials.map((material) => {
+                        filteredMaterials.map((material: IMaterial) => {
                           const isSelected = material._id === watchedMaterialId;
+
                           return (
                             <div
                               key={material._id}
                               onClick={() => {
-                                setValue('materialId', material._id, { shouldValidate: true });
+                                setValue('materialId', material._id, { shouldDirty: true, shouldValidate: true });
                                 setIsDropdownOpen(false);
                               }}
                               className={`searchable-select-option ${isSelected ? 'selected' : ''}`}
@@ -353,7 +548,9 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                               aria-selected={isSelected}
                             >
                               <span>{material.name}</span>
-                              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{material.type} ({material.uom})</span>
+                              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                                {material.type} ({material.uom})
+                              </span>
                             </div>
                           );
                         })
@@ -363,77 +560,129 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                 )}
               </div>
               {errors.materialId && (
-                <span className="form-field-error" role="alert">{errors.materialId.message}</span>
+                <span className="form-field-error" role="alert">
+                  {errors.materialId.message}
+                </span>
               )}
             </div>
 
-            {/* Form Group: Supplier Name */}
-            <div className="form-group">
-              <label htmlFor="supplier-input">
-                Supplier Vendor Name <span className="required-indicator">*</span>
-              </label>
-              <input
-                type="text"
-                id="supplier-input"
-                placeholder="e.g. Earth Supply Co."
-                className={`glass-input ${errors.supplierName ? 'error' : ''}`}
-                {...register('supplierName')}
-              />
-              {errors.supplierName && (
-                <span className="form-field-error" role="alert">{errors.supplierName.message}</span>
-              )}
-            </div>
+            {transactionMode === 'import' ? (
+              <div className="form-group">
+                <label htmlFor="supplier-input">
+                  Supplier Vendor Name <span className="required-indicator">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="supplier-input"
+                  placeholder="e.g. Earth Supply Co."
+                  className={`glass-input ${errors.supplierName ? 'error' : ''}`}
+                  {...register('supplierName')}
+                />
+                {errors.supplierName && (
+                  <span className="form-field-error" role="alert">
+                    {errors.supplierName.message}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="form-group">
+                <label htmlFor="requester-input">
+                  Requester Name <span className="required-indicator">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="requester-input"
+                  placeholder="e.g. Field A Team"
+                  className={`glass-input ${errors.requesterName ? 'error' : ''}`}
+                  {...register('requesterName')}
+                />
+                {errors.requesterName && (
+                  <span className="form-field-error" role="alert">
+                    {errors.requesterName.message}
+                  </span>
+                )}
+              </div>
+            )}
 
-            {/* Form Row: Quantity and Unit Price */}
             <div className="form-row">
-              {/* Quantity Field */}
               <div className="form-group">
                 <label htmlFor="quantity-input">
-                  Quantity Imported <span className="required-indicator">*</span>
+                  {quantityLabel} <span className="required-indicator">*</span>
                   {selectedMaterial && (
                     <span style={{ color: 'var(--primary)', fontWeight: 600, marginLeft: '0.25rem' }}>
                       ({selectedMaterial.uom})
                     </span>
                   )}
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="number"
-                    step="any"
-                    id="quantity-input"
-                    placeholder="0.00"
-                    className={`glass-input ${errors.quantity ? 'error' : ''}`}
-                    {...register('quantity')}
-                  />
-                </div>
-                {errors.quantity && (
-                  <span className="form-field-error" role="alert">{errors.quantity.message}</span>
-                )}
-              </div>
-
-              {/* Unit Price Field */}
-              <div className="form-group">
-                <label htmlFor="unitPrice-input">
-                  Unit Price ($) <span className="required-indicator">*</span>
-                </label>
                 <input
                   type="number"
                   step="any"
-                  id="unitPrice-input"
+                  id="quantity-input"
                   placeholder="0.00"
-                  className={`glass-input ${errors.unitPrice ? 'error' : ''}`}
-                  {...register('unitPrice')}
+                  className={`glass-input ${errors.quantity || stockError ? 'error' : ''}`}
+                  {...register('quantity', { valueAsNumber: true })}
                 />
-                {errors.unitPrice && (
-                  <span className="form-field-error" role="alert">{errors.unitPrice.message}</span>
+                {transactionMode === 'export' && selectedMaterial && (
+                  <span
+                    style={{
+                      color: 'var(--muted-foreground)',
+                      fontSize: '0.8rem',
+                      marginTop: '0.25rem',
+                    }}
+                  >
+                    Available stock: {selectedMaterial.currentStock} {selectedMaterial.uom}
+                  </span>
+                )}
+                {(errors.quantity || stockError) && (
+                  <span className="form-field-error" role="alert">
+                    {errors.quantity?.message || stockError}
+                  </span>
                 )}
               </div>
+
+              {transactionMode === 'import' ? (
+                <div className="form-group">
+                  <label htmlFor="unitPrice-input">
+                    Unit Price ($) <span className="required-indicator">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    id="unitPrice-input"
+                    placeholder="0.00"
+                    className={`glass-input ${errors.unitPrice ? 'error' : ''}`}
+                    {...register('unitPrice', { valueAsNumber: true })}
+                  />
+                  {errors.unitPrice && (
+                    <span className="form-field-error" role="alert">
+                      {errors.unitPrice.message}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label htmlFor="purpose-input">
+                    Purpose / Destination <span className="required-indicator">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="purpose-input"
+                    placeholder="e.g. Field A"
+                    className={`glass-input ${errors.destinationPurpose ? 'error' : ''}`}
+                    {...register('destinationPurpose')}
+                  />
+                  {errors.destinationPurpose && (
+                    <span className="form-field-error" role="alert">
+                      {errors.destinationPurpose.message}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Form Group: Transaction Date */}
             <div className="form-group">
               <label htmlFor="date-input">
-                Receipt Transaction Date <span className="required-indicator">*</span>
+                Transaction Date <span className="required-indicator">*</span>
               </label>
               <input
                 type="date"
@@ -442,88 +691,104 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                 {...register('date')}
               />
               {errors.date && (
-                <span className="form-field-error" role="alert">{errors.date.message}</span>
+                <span className="form-field-error" role="alert">
+                  {errors.date.message}
+                </span>
               )}
             </div>
 
-            {/* Conditional Fields: Expiration & Batch Code for Pesticides/Fertilizers */}
-            <div style={{ 
-              marginTop: '0.5rem', 
-              paddingTop: '1rem', 
-              borderTop: isChemical ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(255,255,255,0.05)',
-              transition: 'var(--transition-smooth)'
-            }}>
-              {isChemical && (
-                <div style={{ 
-                  backgroundColor: 'rgba(245, 158, 11, 0.03)', 
-                  border: '1px solid rgba(245, 158, 11, 0.1)', 
-                  borderRadius: '8px', 
-                  padding: '0.75rem 1rem', 
-                  marginBottom: '1.25rem',
-                  fontSize: '0.8rem',
-                  color: '#fde68a',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.5rem'
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
-                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
-                  <span>
-                    <strong>Chemical Supply Detected:</strong> Expiration schedules and Batch monitoring tracking codes are required for safety compliance regulation.
-                  </span>
-                </div>
-              )}
+            {transactionMode === 'import' && (
+              <div
+                style={{
+                  marginTop: '0.5rem',
+                  paddingTop: '1rem',
+                  borderTop: isChemical
+                    ? '1px dashed rgba(245, 158, 11, 0.2)'
+                    : '1px dashed rgba(255,255,255,0.05)',
+                  transition: 'var(--transition-smooth)',
+                }}
+              >
+                {isChemical && (
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(245, 158, 11, 0.03)',
+                      border: '1px solid rgba(245, 158, 11, 0.1)',
+                      borderRadius: '8px',
+                      padding: '0.75rem 1rem',
+                      marginBottom: '1.25rem',
+                      fontSize: '0.8rem',
+                      color: '#fde68a',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>
+                      <strong>Chemical Supply Detected:</strong> Expiration schedules and batch tracking codes are required for safety compliance.
+                    </span>
+                  </div>
+                )}
 
-              <div className="form-row">
-                {/* Batch Code */}
-                <div className="form-group">
-                  <label htmlFor="batchCode-input">
-                    Batch Code 
-                    {isChemical ? (
-                      <span className="required-indicator">*<span className="chemical-indicator">(Chemical Required)</span></span>
-                    ) : (
-                      <span style={{ fontSize: '0.75rem', marginLeft: '0.25rem', opacity: 0.5 }}>(Optional)</span>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="batchCode-input">
+                      Batch Code
+                      {isChemical ? (
+                        <span className="required-indicator">
+                          *
+                          <span className="chemical-indicator">(Chemical Required)</span>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', marginLeft: '0.25rem', opacity: 0.5 }}>(Optional)</span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      id="batchCode-input"
+                      placeholder="e.g. BATCH-A01"
+                      className={`glass-input ${errors.batchCode ? 'error' : ''}`}
+                      {...register('batchCode')}
+                    />
+                    {errors.batchCode && (
+                      <span className="form-field-error" role="alert">
+                        {errors.batchCode.message}
+                      </span>
                     )}
-                  </label>
-                  <input
-                    type="text"
-                    id="batchCode-input"
-                    placeholder="e.g. BATCH-A01"
-                    className={`glass-input ${errors.batchCode ? 'error' : ''}`}
-                    {...register('batchCode')}
-                  />
-                  {errors.batchCode && (
-                    <span className="form-field-error" role="alert">{errors.batchCode.message}</span>
-                  )}
-                </div>
+                  </div>
 
-                {/* Expiration Date */}
-                <div className="form-group">
-                  <label htmlFor="expirationDate-input">
-                    Expiration Date 
-                    {isChemical ? (
-                      <span className="required-indicator">*<span className="chemical-indicator">(Chemical Required)</span></span>
-                    ) : (
-                      <span style={{ fontSize: '0.75rem', marginLeft: '0.25rem', opacity: 0.5 }}>(Optional)</span>
+                  <div className="form-group">
+                    <label htmlFor="expirationDate-input">
+                      Expiration Date
+                      {isChemical ? (
+                        <span className="required-indicator">
+                          *
+                          <span className="chemical-indicator">(Chemical Required)</span>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', marginLeft: '0.25rem', opacity: 0.5 }}>(Optional)</span>
+                      )}
+                    </label>
+                    <input
+                      type="date"
+                      id="expirationDate-input"
+                      className={`glass-input ${errors.expirationDate ? 'error' : ''}`}
+                      {...register('expirationDate')}
+                    />
+                    {errors.expirationDate && (
+                      <span className="form-field-error" role="alert">
+                        {errors.expirationDate.message}
+                      </span>
                     )}
-                  </label>
-                  <input
-                    type="date"
-                    id="expirationDate-input"
-                    className={`glass-input ${errors.expirationDate ? 'error' : ''}`}
-                    {...register('expirationDate')}
-                  />
-                  {errors.expirationDate && (
-                    <span className="form-field-error" role="alert">{errors.expirationDate.message}</span>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Action Row */}
             <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem' }}>
               <button
                 type="button"
@@ -538,16 +803,17 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                 type="submit"
                 className="glass-btn glass-btn-primary"
                 style={{ flex: 2 }}
-                disabled={isSaving}
+                disabled={isSaving || Boolean(stockError)}
                 id="submit-transaction-btn"
+                aria-busy={isSaving}
               >
                 {isSaving ? (
                   <>
                     <div className="spinner" />
-                    <span>Recording Delivery...</span>
+                    <span>{loadingLabel}</span>
                   </>
                 ) : (
-                  <span>Record Delivery</span>
+                  <span>{submitLabel}</span>
                 )}
               </button>
             </div>

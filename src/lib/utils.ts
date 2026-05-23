@@ -19,8 +19,64 @@ export const queryKeys = {
   },
 };
 
+export const sortByDateDesc = <T extends { date: string }>(records: T[]): T[] =>
+  [...records].sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
+
+export const filterImportHistory = <
+  T extends {
+    supplierName: string;
+    materialId?: {
+      name?: string;
+    };
+  },
+>(
+  records: T[],
+  searchTerm: string
+): T[] => {
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+  if (!normalizedSearchTerm) {
+    return records;
+  }
+
+  return records.filter((entry) => {
+    const materialName = entry.materialId?.name?.toLowerCase() ?? '';
+    return (
+      entry.supplierName.toLowerCase().includes(normalizedSearchTerm) ||
+      materialName.includes(normalizedSearchTerm)
+    );
+  });
+};
+
+export const filterExportHistory = <
+  T extends {
+    requesterName: string;
+    destinationPurpose: string;
+    materialId?: {
+      name?: string;
+    };
+  },
+>(
+  records: T[],
+  searchTerm: string
+): T[] => {
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+  if (!normalizedSearchTerm) {
+    return records;
+  }
+
+  return records.filter((entry) => {
+    const materialName = entry.materialId?.name?.toLowerCase() ?? '';
+    return (
+      entry.requesterName.toLowerCase().includes(normalizedSearchTerm) ||
+      entry.destinationPurpose.toLowerCase().includes(normalizedSearchTerm) ||
+      materialName.includes(normalizedSearchTerm)
+    );
+  });
+};
+
 // Utility to merge CSS classes (custom pure implementation avoiding external dependencies)
 export function cn(...classes: unknown[]) {
   return classes.filter(Boolean).join(' ');
 }
-

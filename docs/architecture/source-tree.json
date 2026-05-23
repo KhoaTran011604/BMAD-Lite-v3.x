@@ -23,8 +23,10 @@
     "src/styles/glass.css",
     "tests/unit/models/Material.test.ts",
     "tests/unit/models/Import.test.ts",
+    "tests/unit/models/Export.test.ts",
     "tests/integration/api/materials.test.ts",
     "tests/integration/api/materials.[id].test.ts",
-    "tests/integration/api/imports.test.ts"
+    "tests/integration/api/imports.test.ts",
+    "tests/integration/api/exports.test.ts"
   ]
 }

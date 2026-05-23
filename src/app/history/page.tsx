@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/utils';
 
-export type MaterialType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Tools';
+import { filterExportHistory, filterImportHistory, queryKeys, sortByDateDesc } from '@/lib/utils';
 
-export interface IMaterial {
+type MaterialType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Tools';
+type HistoryTab = 'imports' | 'exports';
+
+interface IMaterial {
   _id: string;
   name: string;
   type: MaterialType;
@@ -15,7 +17,7 @@ export interface IMaterial {
   currentStock: number;
 }
 
-export interface IImport {
+interface IImport {
   _id: string;
   date: string;
   supplierName: string;
@@ -28,7 +30,18 @@ export interface IImport {
   updatedAt: string;
 }
 
-export interface IApiResponse<T> {
+interface IExport {
+  _id: string;
+  date: string;
+  requesterName: string;
+  materialId: IMaterial;
+  quantity: number;
+  destinationPurpose: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface IApiResponse<T> {
   data: T;
   meta?: {
     page: number;
@@ -37,121 +50,221 @@ export interface IApiResponse<T> {
   };
 }
 
-// API fetcher for Imports transaction feed
-const fetchImports = async (): Promise<IApiResponse<IImport[]>> => {
-  const res = await fetch('/api/imports');
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.error || 'Failed to fetch import transaction logs');
+type IHistorySelection =
+  | {
+      type: 'imports';
+      record: IImport;
+    }
+  | {
+      type: 'exports';
+      record: IExport;
+    };
+
+const fetchHistory = async <T,>(path: string, fallbackMessage: string): Promise<IApiResponse<T[]>> => {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(errorBody.error || fallbackMessage);
   }
-  return res.json();
+
+  return response.json() as Promise<IApiResponse<T[]>>;
 };
 
+const fetchImports = (): Promise<IApiResponse<IImport[]>> =>
+  fetchHistory<IImport>('/api/imports', 'Failed to fetch import transaction logs');
+
+const fetchExports = (): Promise<IApiResponse<IExport[]>> =>
+  fetchHistory<IExport>('/api/exports', 'Failed to fetch export transaction logs');
+
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return Number.isNaN(date.getTime()) ? dateString : date.toISOString().split('T')[0];
+};
+
+const formatCurrency = (amount: number): string =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+
+const getMaterialTypeLabel = (materialType?: MaterialType): string => {
+  if (!materialType) {
+    return 'Unclassified';
+  }
+
+  return materialType;
+};
+
+const getHistorySearchPlaceholder = (activeTab: HistoryTab): string =>
+  activeTab === 'imports'
+    ? 'Search receipts by supplier or material name...'
+    : 'Search exports by requester, material, or destination...';
+
 export default function HistoryPage() {
-  const [activeTab, setActiveTab] = useState<'imports' | 'exports'>('imports');
+  const [activeTab, setActiveTab] = useState<HistoryTab>('imports');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedImport, setSelectedImport] = useState<IImport | null>(null);
+  const [selection, setSelection] = useState<IHistorySelection | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // TanStack React Query for GET Imports feed
-  const { data, isLoading, error, refetch } = useQuery<IApiResponse<IImport[]>, Error>({
+  const {
+    data: importsResponse,
+    isLoading: isImportsLoading,
+    error: importsError,
+    refetch: refetchImports,
+  } = useQuery<IApiResponse<IImport[]>, Error>({
     queryKey: queryKeys.imports.all,
     queryFn: fetchImports,
-    enabled: activeTab === 'imports',
   });
 
-  const imports: IImport[] = data?.data || [];
-
-  // Client-side text filtering for imports
-  const filteredImports = imports.filter((imp) => {
-    const matchesSupplier = imp.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesMaterial = imp.materialId?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-    return matchesSupplier || matchesMaterial;
+  const {
+    data: exportsResponse,
+    isLoading: isExportsLoading,
+    error: exportsError,
+    refetch: refetchExports,
+  } = useQuery<IApiResponse<IExport[]>, Error>({
+    queryKey: queryKeys.exports.all,
+    queryFn: fetchExports,
   });
 
-  // Drawer interaction handlers
-  const handleOpenDrawer = (imp: IImport) => {
-    setSelectedImport(imp);
-    setIsDrawerOpen(true);
-  };
+  const imports = useMemo<IImport[]>(
+    () => sortByDateDesc<IImport>(importsResponse?.data ?? []),
+    [importsResponse]
+  );
 
-  const handleCloseDrawer = () => {
+  const exports = useMemo<IExport[]>(
+    () => sortByDateDesc<IExport>(exportsResponse?.data ?? []),
+    [exportsResponse]
+  );
+
+  const filteredImports = useMemo(() => {
+    return filterImportHistory(imports, searchTerm);
+  }, [imports, searchTerm]);
+
+  const filteredExports = useMemo(() => {
+    return filterExportHistory(exports, searchTerm);
+  }, [exports, searchTerm]);
+
+  const hasActiveSearch = searchTerm.trim().length > 0;
+
+  const handleCloseDrawer = useCallback(() => {
     setIsDrawerOpen(false);
-    // Keep reference briefly to allow sliding CSS animation to finish
-    setTimeout(() => {
-      setSelectedImport(null);
-    }, 350);
-  };
 
-  // Keyboard navigation for accessible modal closure
+    window.setTimeout(() => {
+      setSelection(null);
+    }, 250);
+  }, []);
+
+  const handleOpenImportDrawer = useCallback((record: IImport) => {
+    setSelection({ type: 'imports', record });
+    setIsDrawerOpen(true);
+  }, []);
+
+  const handleOpenExportDrawer = useCallback((record: IExport) => {
+    setSelection({ type: 'exports', record });
+    setIsDrawerOpen(true);
+  }, []);
+
+  const handleTabChange = useCallback((tab: HistoryTab) => {
+    setActiveTab(tab);
+    setSearchTerm('');
+    setSelection(null);
+    setIsDrawerOpen(false);
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    if (activeTab === 'imports') {
+      void refetchImports();
+      return;
+    }
+
+    void refetchExports();
+  }, [activeTab, refetchExports, refetchImports]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isDrawerOpen) {
+    if (!isDrawerOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         handleCloseDrawer();
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDrawerOpen]);
+  }, [handleCloseDrawer, isDrawerOpen]);
 
-  // Localized date formatting
-  const formatDate = (dateString: string) => {
-    try {
-      const d = new Date(dateString);
-      if (isNaN(d.getTime())) return dateString;
-      return d.toISOString().split('T')[0];
-    } catch {
-      return dateString;
-    }
-  };
+  const activeError = activeTab === 'imports' ? importsError : exportsError;
+  const isActiveLoading = activeTab === 'imports' ? isImportsLoading : isExportsLoading;
+  const hasRows = activeTab === 'imports' ? filteredImports.length > 0 : filteredExports.length > 0;
 
-  // Localized currency formatting
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  const renderLoadingRows = (columnCount: number) => (
+    <tbody>
+      {Array.from({ length: 5 }, (_, index) => (
+        <tr key={`loading-row-${index}`} style={{ borderBottom: '1px solid var(--border)' }}>
+          {Array.from({ length: columnCount }, (_, columnIndex) => (
+            <td key={`loading-cell-${index}-${columnIndex}`} style={{ padding: '1.1rem 1rem' }}>
+              <div
+                className="skeleton-pulse"
+                style={{
+                  height: '1.1rem',
+                  width: `${60 + columnIndex * 20}px`,
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  );
 
-  // Dynamic chemical expiration and warnings analysis
-  const getExpirationStatus = (expirationDateString?: string) => {
-    if (!expirationDateString) return null;
-    const expDate = new Date(expirationDateString);
-    const now = new Date();
-
-    expDate.setHours(0, 0, 0, 0);
-    now.setHours(0, 0, 0, 0);
-
-    const timeDiff = expDate.getTime() - now.getTime();
-    const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-
-    if (daysDiff < 0) {
-      return { status: 'expired', text: 'Expired', days: Math.abs(daysDiff) };
-    } else if (daysDiff <= 30) {
-      return { status: 'near-expiry', text: `Expiring soon (${daysDiff} days)`, days: daysDiff };
-    }
-    return { status: 'healthy', text: `Healthy (${daysDiff} days left)`, days: daysDiff };
-  };
+  const renderEmptyState = () => (
+    <tr>
+      <td
+        colSpan={activeTab === 'imports' ? 6 : 5}
+        style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}
+      >
+        <p style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', marginBottom: '0.5rem' }}>
+          No {activeTab === 'imports' ? 'receipts' : 'exports'} found
+        </p>
+        <p style={{ fontSize: '0.9rem' }}>
+          {hasActiveSearch
+            ? 'Try a different keyword to broaden the audit search.'
+            : activeTab === 'imports'
+              ? 'New import receipts will appear here once stock is logged.'
+              : 'New export disbursements will appear here once inventory is issued.'}
+        </p>
+      </td>
+    </tr>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Top Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>Transaction History</h2>
-          <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>
-            Unified audit logs of incoming deliveries and outgoing disbursements
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '0.95rem' }}>
+            Review incoming receipts and outgoing disbursements in one audit surface.
           </p>
         </div>
       </div>
 
-      {/* Tabs navigation row */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: '0.5rem', paddingBottom: '1px' }}>
+      <div
+        role="tablist"
+        aria-label="Transaction history tabs"
+        style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: '0.5rem', paddingBottom: '1px' }}
+      >
         <button
-          onClick={() => {
-            setActiveTab('imports');
-            setSearchTerm('');
-          }}
+          type="button"
+          id="history-tab-imports"
+          role="tab"
+          aria-selected={activeTab === 'imports'}
+          aria-controls="history-panel-imports"
+          onClick={() => handleTabChange('imports')}
           className={`glass-btn ${activeTab === 'imports' ? 'glass-btn-primary' : ''}`}
           style={{
             borderBottomRightRadius: 0,
@@ -159,16 +272,16 @@ export default function HistoryPage() {
             borderBottom: activeTab === 'imports' ? '2px solid var(--primary)' : 'none',
             padding: '0.75rem 1.75rem',
           }}
-          aria-label="View Imports Feed"
         >
-          <span>📥</span>
-          <span>Imports</span>
+          Imports
         </button>
         <button
-          onClick={() => {
-            setActiveTab('exports');
-            setSearchTerm('');
-          }}
+          type="button"
+          id="history-tab-exports"
+          role="tab"
+          aria-selected={activeTab === 'exports'}
+          aria-controls="history-panel-exports"
+          onClick={() => handleTabChange('exports')}
           className={`glass-btn ${activeTab === 'exports' ? 'glass-btn-primary' : ''}`}
           style={{
             borderBottomRightRadius: 0,
@@ -176,366 +289,248 @@ export default function HistoryPage() {
             borderBottom: activeTab === 'exports' ? '2px solid var(--primary)' : 'none',
             padding: '0.75rem 1.75rem',
           }}
-          aria-label="View Exports Feed"
         >
-          <span>📤</span>
-          <span>Exports</span>
+          Exports
         </button>
       </div>
 
-      {/* SEARCH AND CONTROLS SECTION */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '100%' }}>
-            <span
-              style={{
-                position: 'absolute',
-                left: '1rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--muted-foreground)',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-            </span>
-            <input
-              type="text"
-              placeholder={
-                activeTab === 'imports'
-                  ? 'Search receipts by supplier name or supply name...'
-                  : 'Search disbursements...'
-              }
-              className="glass-input"
-              style={{ paddingLeft: '2.75rem' }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Filter transaction history search input"
-              id="transaction-search-input"
-            />
-          </div>
-          {activeTab === 'imports' && (
-            <button className="glass-btn" onClick={() => refetch()} aria-label="Refresh imports log feed">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-                <path d="M16 16h5v5" />
-              </svg>
-              <span>Refresh</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* FEED FEEDBACK VIEW GRID */}
-      {activeTab === 'imports' ? (
-        <div className="glass-panel glass-card">
-          {/* Skeleton loading display */}
-          {isLoading && (
-            <div style={{ padding: '1rem 0' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: '1px solid var(--border)',
-                      color: 'var(--muted-foreground)',
-                      fontSize: '0.85rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    <th style={{ padding: '1rem' }}>Date</th>
-                    <th style={{ padding: '1rem' }}>Supply Item</th>
-                    <th style={{ padding: '1rem' }}>Supplier</th>
-                    <th style={{ padding: '1rem' }}>Quantity</th>
-                    <th style={{ padding: '1rem' }}>Unit Price</th>
-                    <th style={{ padding: '1rem', textAlign: 'right' }}>Total Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...Array(5)].map((_, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '1.25rem 1rem' }}>
-                        <div
-                          className="skeleton-pulse"
-                          style={{
-                            height: '1.25rem',
-                            width: '90px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            borderRadius: '4px',
-                          }}
-                        ></div>
-                      </td>
-                      <td style={{ padding: '1.25rem 1rem' }}>
-                        <div
-                          className="skeleton-pulse"
-                          style={{
-                            height: '1.25rem',
-                            width: '180px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            borderRadius: '4px',
-                          }}
-                        ></div>
-                      </td>
-                      <td style={{ padding: '1.25rem 1rem' }}>
-                        <div
-                          className="skeleton-pulse"
-                          style={{
-                            height: '1.25rem',
-                            width: '120px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            borderRadius: '4px',
-                          }}
-                        ></div>
-                      </td>
-                      <td style={{ padding: '1.25rem 1rem' }}>
-                        <div
-                          className="skeleton-pulse"
-                          style={{
-                            height: '1.25rem',
-                            width: '60px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            borderRadius: '4px',
-                          }}
-                        ></div>
-                      </td>
-                      <td style={{ padding: '1.25rem 1rem' }}>
-                        <div
-                          className="skeleton-pulse"
-                          style={{
-                            height: '1.25rem',
-                            width: '50px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            borderRadius: '4px',
-                          }}
-                        ></div>
-                      </td>
-                      <td style={{ padding: '1.25rem 1rem', textAlign: 'right' }}>
-                        <div
-                          className="skeleton-pulse"
-                          style={{
-                            height: '1.25rem',
-                            width: '70px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                            borderRadius: '4px',
-                            marginLeft: 'auto',
-                          }}
-                        ></div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Database Synchronization Errors */}
-          {error && (
-            <div
-              className="glass-glow-danger"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '3rem 2rem',
-                textAlign: 'center',
-                gap: '1rem',
-              }}
-            >
-              <div
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--danger)',
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Database Sync Failure</h3>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem', maxWidth: '400px' }}>
-                {error.message || 'An error occurred while loading incoming transaction logs.'}
-              </p>
-              <button className="glass-btn glass-btn-primary" onClick={() => refetch()} style={{ marginTop: '0.5rem' }}>
-                Retry Log Feed Sync
-              </button>
-            </div>
-          )}
-
-          {/* Chronological Logs Table */}
-          {!isLoading && !error && (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: '1px solid var(--border)',
-                      color: 'var(--muted-foreground)',
-                      fontSize: '0.85rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    <th style={{ padding: '1rem' }}>Date</th>
-                    <th style={{ padding: '1rem' }}>Supply Item</th>
-                    <th style={{ padding: '1rem' }}>Supplier</th>
-                    <th style={{ padding: '1rem' }}>Quantity</th>
-                    <th style={{ padding: '1rem' }}>Unit Price</th>
-                    <th style={{ padding: '1rem', textAlign: 'right' }}>Total Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredImports.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>
-                        <div style={{ marginBottom: '0.75rem', fontSize: '1.5rem' }}>🔍</div>
-                        <p style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff' }}>No logs recorded</p>
-                        <p style={{ fontSize: '0.85rem' }}>
-                          No delivery transactions matched your filter keywords.
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredImports.map((imp) => {
-                      const totalCost = imp.quantity * imp.unitPrice;
-                      const uom = imp.materialId?.uom || '';
-                      
-                      return (
-                        <tr
-                          key={imp._id}
-                          onClick={() => handleOpenDrawer(imp)}
-                          style={{
-                            borderBottom: '1px solid var(--border)',
-                            transition: 'var(--transition-smooth)',
-                            cursor: 'pointer',
-                          }}
-                          className="catalog-row"
-                        >
-                          <td style={{ padding: '1.15rem 1rem', color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>
-                            {formatDate(imp.date)}
-                          </td>
-                          <td style={{ padding: '1.15rem 1rem', fontWeight: 600, color: '#fff' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                              <span>{imp.materialId?.name || 'Unknown Supply'}</span>
-                              {imp.materialId?.type && (
-                                <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--muted-foreground)' }}>
-                                  {imp.materialId.type === 'Seeds' && '🌱 '}
-                                  {imp.materialId.type === 'Fertilizers' && '🧪 '}
-                                  {imp.materialId.type === 'Pesticides' && '🦠 '}
-                                  {imp.materialId.type === 'Tools' && '🛠️ '}
-                                  {imp.materialId.type}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ padding: '1.15rem 1rem', color: 'var(--foreground)' }}>
-                            {imp.supplierName}
-                          </td>
-                          <td style={{ padding: '1.15rem 1rem', fontWeight: 700, color: 'var(--primary)' }}>
-                            +{imp.quantity}
-                            <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', marginLeft: '0.25rem', fontWeight: 400 }}>
-                              {uom}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1.15rem 1rem', color: 'var(--muted-foreground)' }}>
-                            {formatCurrency(imp.unitPrice)}
-                          </td>
-                          <td style={{ padding: '1.15rem 1rem', textAlign: 'right', fontWeight: 700, color: '#fff' }}>
-                            {formatCurrency(totalCost)}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Exports Tab Placeholder Card */
-        <div
-          className="glass-panel glass-card"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '6rem 2rem',
-            textAlign: 'center',
-            gap: '1.5rem',
-            background: 'rgba(20, 20, 23, 0.4)',
-            borderStyle: 'dashed',
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-          }}
-        >
-          <div
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: '100%' }}>
+          <span
+            aria-hidden="true"
             style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(16, 185, 129, 0.04)',
+              position: 'absolute',
+              left: '1rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--muted-foreground)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '2rem',
-              border: '1px solid rgba(16, 185, 129, 0.1)',
             }}
           >
-            📦
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>
-              Disbursements Feed Coming Soon
-            </h3>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem', maxWidth: '460px', margin: '0 auto' }}>
-              Story 2.3 handles primary stock-receipt auditing. Outgoing crop disbursements, safety limits checks, and exports logs will be enabled in Epic 3.
-            </p>
-          </div>
-          <button
-            className="glass-btn"
-            onClick={() => setActiveTab('imports')}
-            style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}
-          >
-            <span>Return to Deliveries</span>
-          </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </span>
+          <input
+            id="transaction-search-input"
+            type="text"
+            className="glass-input"
+            style={{ paddingLeft: '2.75rem' }}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder={getHistorySearchPlaceholder(activeTab)}
+            aria-label={`Search ${activeTab} transaction history`}
+          />
         </div>
-      )}
+        <button
+          type="button"
+          className="glass-btn"
+          onClick={handleRetry}
+          aria-label={`Refresh ${activeTab} history`}
+        >
+          Refresh
+        </button>
+      </div>
 
-      {/* PREMIUM DETAILS DRAWER PANE */}
+      <div
+        id={activeTab === 'imports' ? 'history-panel-imports' : 'history-panel-exports'}
+        role="tabpanel"
+        aria-labelledby={activeTab === 'imports' ? 'history-tab-imports' : 'history-tab-exports'}
+        className="glass-panel glass-card"
+      >
+        {activeError ? (
+          <div
+            className="glass-glow-danger"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '3rem 2rem',
+              textAlign: 'center',
+              gap: '1rem',
+            }}
+          >
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>Unable to load history</h3>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem', maxWidth: '420px' }}>
+              {activeError.message || 'The transaction feed could not be loaded. Please retry.'}
+            </p>
+            <button type="button" className="glass-btn glass-btn-primary" onClick={handleRetry}>
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    color: 'var(--muted-foreground)',
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  <th style={{ padding: '1rem' }}>Date</th>
+                  <th style={{ padding: '1rem' }}>Material</th>
+                  <th style={{ padding: '1rem' }}>
+                    {activeTab === 'imports' ? 'Supplier' : 'Requester'}
+                  </th>
+                  <th style={{ padding: '1rem' }}>Quantity</th>
+                  {activeTab === 'imports' ? (
+                    <>
+                      <th style={{ padding: '1rem' }}>Unit Price</th>
+                      <th style={{ padding: '1rem', textAlign: 'right' }}>Total Cost</th>
+                    </>
+                  ) : (
+                    <th style={{ padding: '1rem' }}>Purpose</th>
+                  )}
+                </tr>
+              </thead>
+
+              {isActiveLoading ? (
+                renderLoadingRows(activeTab === 'imports' ? 6 : 5)
+              ) : (
+                <tbody>
+                  {!hasRows
+                    ? renderEmptyState()
+                    : activeTab === 'imports'
+                      ? filteredImports.map((entry) => {
+                          const totalCost = entry.quantity * entry.unitPrice;
+
+                          return (
+                            <tr
+                              key={entry._id}
+                              className="catalog-row"
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`Open import record for ${entry.materialId?.name || 'Unknown Material'}`}
+                              onClick={() => handleOpenImportDrawer(entry)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  handleOpenImportDrawer(entry);
+                                }
+                              }}
+                              style={{
+                                borderBottom: '1px solid var(--border)',
+                                cursor: 'pointer',
+                                transition: 'var(--transition-smooth)',
+                              }}
+                            >
+                              <td style={{ padding: '1.1rem 1rem', color: 'var(--muted-foreground)' }}>
+                                {formatDate(entry.date)}
+                              </td>
+                              <td style={{ padding: '1.1rem 1rem', color: '#fff', fontWeight: 700 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                  <span>{entry.materialId?.name || 'Unknown Material'}</span>
+                                  <span className="glass-badge glass-badge-muted" style={{ width: 'fit-content' }}>
+                                    {getMaterialTypeLabel(entry.materialId?.type)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ padding: '1.1rem 1rem', color: 'var(--foreground)' }}>
+                                {entry.supplierName}
+                              </td>
+                              <td style={{ padding: '1.1rem 1rem', fontWeight: 800, color: 'var(--primary)' }}>
+                                +{entry.quantity}
+                                <span
+                                  style={{
+                                    marginLeft: '0.25rem',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 400,
+                                    color: 'var(--muted-foreground)',
+                                  }}
+                                >
+                                  {entry.materialId?.uom}
+                                </span>
+                              </td>
+                              <td style={{ padding: '1.1rem 1rem', color: 'var(--muted-foreground)' }}>
+                                {formatCurrency(entry.unitPrice)}
+                              </td>
+                              <td style={{ padding: '1.1rem 1rem', textAlign: 'right', color: '#fff', fontWeight: 700 }}>
+                                {formatCurrency(totalCost)}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      : filteredExports.map((entry) => (
+                          <tr
+                            key={entry._id}
+                            className="catalog-row"
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Open export record for ${entry.materialId?.name || 'Unknown Material'}`}
+                            onClick={() => handleOpenExportDrawer(entry)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                handleOpenExportDrawer(entry);
+                              }
+                            }}
+                            style={{
+                              borderBottom: '1px solid var(--border)',
+                              cursor: 'pointer',
+                              transition: 'var(--transition-smooth)',
+                            }}
+                          >
+                            <td style={{ padding: '1.1rem 1rem', color: 'var(--muted-foreground)' }}>
+                              {formatDate(entry.date)}
+                            </td>
+                            <td style={{ padding: '1.1rem 1rem', color: '#fff', fontWeight: 700 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                <span>{entry.materialId?.name || 'Unknown Material'}</span>
+                                <span className="glass-badge glass-badge-muted" style={{ width: 'fit-content' }}>
+                                  {getMaterialTypeLabel(entry.materialId?.type)}
+                                </span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '1.1rem 1rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                <span style={{ color: '#fff', fontWeight: 700 }}>{entry.requesterName}</span>
+                                <span style={{ color: 'var(--muted-foreground)', fontSize: '0.82rem' }}>
+                                  Issued for field execution
+                                </span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '1.1rem 1rem', fontWeight: 800, color: '#fca5a5' }}>
+                              -{entry.quantity}
+                              <span
+                                style={{
+                                  marginLeft: '0.25rem',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 400,
+                                  color: 'var(--muted-foreground)',
+                                }}
+                              >
+                                {entry.materialId?.uom}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1.1rem 1rem' }}>
+                              <span className="glass-badge glass-badge-warning">{entry.destinationPurpose}</span>
+                            </td>
+                          </tr>
+                        ))}
+                </tbody>
+              )}
+            </table>
+          </div>
+        )}
+      </div>
+
       <div
         className={`drawer-overlay ${isDrawerOpen ? 'open' : ''}`}
         onClick={handleCloseDrawer}
@@ -543,281 +538,165 @@ export default function HistoryPage() {
       >
         <div
           className={`drawer-content ${isDrawerOpen ? 'open' : ''}`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={selection?.type === 'exports' ? 'Export audit record' : 'Import audit record'}
           style={{ width: '520px' }}
         >
-          {/* Header */}
           <div className="drawer-header">
-            <h2>Receipt Audit Record</h2>
-            <button className="drawer-close-btn" onClick={handleCloseDrawer} aria-label="Close Audit Record">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
+            <h2>{selection?.type === 'exports' ? 'Export Audit Record' : 'Import Audit Record'}</h2>
+            <button
+              type="button"
+              className="drawer-close-btn"
+              onClick={handleCloseDrawer}
+              aria-label="Close audit record"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>
 
-          {/* Drawer Details Body */}
-          {selectedImport && (
-            <div className="drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-              {/* Material catalog overview header */}
+          {selection && (
+            <div className="drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
                   padding: '1.25rem',
-                  background: 'rgba(255, 255, 255, 0.02)',
+                  background: 'rgba(255, 255, 255, 0.03)',
                   borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
                 }}
               >
-                <div style={{ fontSize: '2rem' }}>
-                  {selectedImport.materialId?.type === 'Seeds' && '🌱'}
-                  {selectedImport.materialId?.type === 'Fertilizers' && '🧪'}
-                  {selectedImport.materialId?.type === 'Pesticides' && '🦠'}
-                  {selectedImport.materialId?.type === 'Tools' && '🛠️'}
-                  {!selectedImport.materialId?.type && '📦'}
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>
-                    {selectedImport.materialId?.name || 'Unknown Supply'}
-                  </h3>
-                  <span className="glass-badge glass-badge-muted" style={{ marginTop: '0.25rem' }}>
-                    {selectedImport.materialId?.type || 'Not Classified'}
-                  </span>
-                </div>
+                <span
+                  className={`glass-badge ${
+                    selection.type === 'exports' ? 'glass-badge-warning' : 'glass-badge-primary'
+                  }`}
+                  style={{ width: 'fit-content' }}
+                >
+                  {selection.type === 'exports' ? 'Outgoing Transaction' : 'Incoming Transaction'}
+                </span>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>
+                  {selection.record.materialId?.name || 'Unknown Material'}
+                </h3>
+                <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>
+                  {getMaterialTypeLabel(selection.record.materialId?.type)} · {selection.record.materialId?.uom || 'No UOM'}
+                </p>
               </div>
 
-              {/* Transaction Metrics Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div
-                  className="glass-panel"
-                  style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
-                >
-                  <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
-                    QUANTITY RECEIVED
+                <div className="glass-panel" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 700 }}>
+                    {selection.type === 'exports' ? 'QUANTITY ISSUED' : 'QUANTITY RECEIVED'}
                   </span>
-                  <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary)' }}>
-                    +{selectedImport.quantity}
-                    <span style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginLeft: '0.25rem', fontWeight: 400 }}>
-                      {selectedImport.materialId?.uom}
+                  <span
+                    style={{
+                      fontSize: '1.35rem',
+                      fontWeight: 800,
+                      color: selection.type === 'exports' ? '#fca5a5' : 'var(--primary)',
+                    }}
+                  >
+                    {selection.type === 'exports' ? '-' : '+'}
+                    {selection.record.quantity}
+                    <span
+                      style={{
+                        marginLeft: '0.25rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 400,
+                        color: 'var(--muted-foreground)',
+                      }}
+                    >
+                      {selection.record.materialId?.uom}
                     </span>
                   </span>
                 </div>
-                <div
-                  className="glass-panel"
-                  style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
-                >
-                  <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
-                    TOTAL TRANSACTION COST
+                <div className="glass-panel" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 700 }}>
+                    TRANSACTION DATE
                   </span>
                   <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff' }}>
-                    {formatCurrency(selectedImport.quantity * selectedImport.unitPrice)}
+                    {formatDate(selection.record.date)}
                   </span>
                 </div>
               </div>
 
-              {/* Supplier details list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Auditing Attributes
-                </h4>
-
+              {selection.type === 'imports' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '0.85rem 1rem',
-                      background: 'rgba(255, 255, 255, 0.01)',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>Supplier Vendor</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
-                      {selectedImport.supplierName}
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Supplier</span>
+                    <span style={{ color: '#fff', fontWeight: 700 }}>{selection.record.supplierName}</span>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Unit Price</span>
+                    <span style={{ color: '#fff', fontWeight: 700 }}>{formatCurrency(selection.record.unitPrice)}</span>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Total Cost</span>
+                    <span style={{ color: '#fff', fontWeight: 700 }}>
+                      {formatCurrency(selection.record.quantity * selection.record.unitPrice)}
                     </span>
                   </div>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '0.85rem 1rem',
-                      background: 'rgba(255, 255, 255, 0.01)',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>Transaction Date</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
-                      {formatDate(selectedImport.date)}
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Batch Code</span>
+                    <span style={{ color: '#fff', fontWeight: 700 }}>
+                      {selection.record.batchCode || 'Not provided'}
                     </span>
                   </div>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '0.85rem 1rem',
-                      background: 'rgba(255, 255, 255, 0.01)',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>Unit Contract Price</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
-                      {formatCurrency(selectedImport.unitPrice)} per {selectedImport.materialId?.uom}
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '0.85rem 1rem',
-                      background: 'rgba(255, 255, 255, 0.01)',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>Record Reference ID</span>
-                    <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--muted-foreground)' }}>
-                      {selectedImport._id}
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Expiration Date</span>
+                    <span style={{ color: '#fff', fontWeight: 700 }}>
+                      {selection.record.expirationDate ? formatDate(selection.record.expirationDate) : 'Not provided'}
                     </span>
                   </div>
                 </div>
-              </div>
-
-              {/* Chemical Shell-Life Tracking */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Safety & Batch Traceability
-                </h4>
-
-                <div
-                  className="glass-panel"
-                  style={{
-                    padding: '1.25rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    background: 'rgba(24, 24, 27, 0.4)',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>Manufacturer Batch Code</span>
-                    {selectedImport.batchCode ? (
-                      <span
-                        className="glass-badge glass-badge-primary"
-                        style={{ fontFamily: 'monospace', padding: '0.3rem 0.75rem' }}
-                      >
-                        {selectedImport.batchCode}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)', fontStyle: 'italic' }}>
-                        Not Provided
-                      </span>
-                    )}
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Requester</span>
+                    <span style={{ color: '#fff', fontWeight: 700 }}>{selection.record.requesterName}</span>
                   </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>Expiration Date</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
-                      {selectedImport.expirationDate ? formatDate(selectedImport.expirationDate) : 'None'}
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Purpose</span>
+                    <span className="glass-badge glass-badge-warning">{selection.record.destinationPurpose}</span>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>Record ID</span>
+                    <span style={{ color: '#fff', fontWeight: 700, fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                      {selection.record._id}
                     </span>
                   </div>
-
-                  {/* Dynamic Alert Banner for chemically expiring items */}
-                  {selectedImport.expirationDate && (
-                    <div style={{ marginTop: '0.5rem' }}>
-                      {(() => {
-                        const analysis = getExpirationStatus(selectedImport.expirationDate);
-                        if (!analysis) return null;
-
-                        if (analysis.status === 'expired') {
-                          return (
-                            <div
-                              className="glass-glow-danger"
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.75rem 1rem',
-                                background: 'rgba(239, 68, 68, 0.08)',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                borderRadius: '8px',
-                                color: '#fecaca',
-                                fontSize: '0.8rem',
-                              }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                                <line x1="12" y1="9" x2="12" y2="13" />
-                                <line x1="12" y1="17" x2="12.01" y2="17" />
-                              </svg>
-                              <span>
-                                **CRITICAL WARNING:** This chemical batch has expired by **{analysis.days} days**! Immediate safety review required.
-                              </span>
-                            </div>
-                          );
-                        } else if (analysis.status === 'near-expiry') {
-                          return (
-                            <div
-                              className="glass-glow-warning"
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.75rem 1rem',
-                                background: 'rgba(245, 158, 11, 0.08)',
-                                border: '1px solid rgba(245, 158, 11, 0.2)',
-                                borderRadius: '8px',
-                                color: '#fde68a',
-                                fontSize: '0.8rem',
-                              }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                              </svg>
-                              <span>
-                                **SHELF-LIFE ALERT:** This agricultural batch expires in **{analysis.days} days**! Plan immediate field application.
-                              </span>
-                            </div>
-                          );
-                        } else {
-                          return (
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.75rem 1rem',
-                                background: 'rgba(16, 185, 129, 0.05)',
-                                border: '1px solid rgba(16, 185, 129, 0.15)',
-                                borderRadius: '8px',
-                                color: '#a7f3d0',
-                                fontSize: '0.8rem',
-                              }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              <span>
-                                Batch chemical stability is healthy. Dynamic shelf-life tracks **{analysis.days} days** remaining before expiration.
-                              </span>
-                            </div>
-                          );
-                        }
-                      })()}
-                    </div>
-                  )}
+                  <div
+                    className="glass-panel"
+                    style={{
+                      padding: '1rem 1.1rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      borderColor: 'rgba(245, 158, 11, 0.18)',
+                    }}
+                  >
+                    <span style={{ color: '#fde68a', fontWeight: 700 }}>Audit Note</span>
+                    <p style={{ color: 'var(--foreground)', fontSize: '0.9rem' }}>
+                      This disbursement reduced on-hand inventory and should align with the backend stock validation rules.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
