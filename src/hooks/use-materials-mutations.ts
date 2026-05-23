@@ -21,7 +21,6 @@ export function useCreateMaterialMutation(options?: {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-role': 'Manager',
         },
         body: JSON.stringify(newMaterial),
       });
@@ -60,7 +59,6 @@ export function useUpdateMaterialMutation(options?: {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-role': 'Manager',
         },
         body: JSON.stringify(data),
       });

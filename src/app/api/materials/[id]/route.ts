@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import Material from '@/models/Material';
+import { requireWriteAccess } from '@/lib/auth-guard';
 import { z } from 'zod';
 
 export interface IApiResponse<T> {
@@ -26,16 +27,12 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    // Simulated administrative authorization header check (Farm Manager privileges)
-    const userRole = req.headers.get('x-user-role');
-    if (userRole !== 'Manager' && userRole !== 'FarmManager') {
-      return NextResponse.json(
-        { error: 'Unauthorized: Farm Manager privileges required' },
-        { status: 401 }
-      );
-    }
+  const writeAccess = requireWriteAccess(req);
+  if ('response' in writeAccess) {
+    return writeAccess.response;
+  }
 
+  try {
     const { id } = params;
     if (!id) {
       return NextResponse.json(

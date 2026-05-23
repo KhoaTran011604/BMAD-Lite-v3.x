@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 
 import dbConnect from '@/lib/dbConnect';
+import { requireWriteAccess } from '@/lib/auth-guard';
 import Export, { IExportDocument } from '@/models/Export';
 import Material from '@/models/Material';
 
@@ -194,12 +195,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const userRole = req.headers.get('x-user-role');
-  if (userRole !== 'Manager' && userRole !== 'FarmManager') {
-    return NextResponse.json(
-      { error: 'Unauthorized: Farm Manager privileges required' },
-      { status: 401 }
-    );
+  const writeAccess = requireWriteAccess(req);
+  if ('response' in writeAccess) {
+    return writeAccess.response;
   }
 
   try {

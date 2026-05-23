@@ -57,6 +57,7 @@
   "frontend": {
     "_files": ["package.json", "tsconfig.json"],
     "src": {
+      "_files": ["middleware.ts"],
       "api": {
         "_files": [
           "authService.ts",
@@ -71,10 +72,20 @@
       },
       "app": {
         "_files": ["layout.tsx", "layout copy.tsx", "page.tsx", "providers.tsx"],
+        "api": {
+          "auth": {
+            "login": { "_files": ["route.ts"] },
+            "logout": { "_files": ["route.ts"] },
+            "me": { "_files": ["route.ts"] },
+            "register": { "_files": ["route.ts"] }
+          }
+        },
         "auth": {
           "sign-in": { "_files": "[QUICK-SCAN] sign-in page" },
           "sign-up": { "_files": "[QUICK-SCAN] sign-up page" }
         },
+        "login": { "_files": ["page.tsx"] },
+        "register": { "_files": ["page.tsx"] },
         "categories": { "_files": "[QUICK-SCAN] categories page" },
         "orders": {
           "_files": ["page.tsx"],
@@ -154,7 +165,10 @@
         ]
       },
       "lib": {
-        "_files": ["api.ts", "crypto.ts", "format-number.ts"]
+        "_files": ["api.ts", "crypto.ts", "format-number.ts", "auth-helper.ts", "auth-guard.ts"]
+      },
+      "models": {
+        "_files": ["Material.ts", "Import.ts", "Export.ts", "User.ts"]
       },
       "shemas": {
         "_files": [
@@ -181,6 +195,21 @@
   },
   "docs": {
     "_files": "[QUICK-SCAN] BMad-Lite documentation"
+  },
+  "tests": {
+    "integration": {
+      "api": {
+        "_files": ["auth.test.ts"]
+      }
+    },
+    "unit": {
+      "lib": {
+        "_files": ["auth-helper.test.ts", "auth-schemas.test.ts"]
+      },
+      "models": {
+        "_files": ["User.test.ts"]
+      }
+    }
   },
   ".bmad-lite": {
     "_files": "[QUICK-SCAN] BMad-Lite config & agents"

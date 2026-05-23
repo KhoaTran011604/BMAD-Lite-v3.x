@@ -23,7 +23,6 @@ export function useCreateExportMutation(options?: {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-role': 'FarmManager',
         },
         body: JSON.stringify(newExport),
       });

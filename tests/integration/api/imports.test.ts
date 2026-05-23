@@ -5,13 +5,21 @@ import { GET, POST } from '@/app/api/imports/route';
 import Import from '@/models/Import';
 import Material from '@/models/Material';
 import { NextRequest } from 'next/server';
+import { SESSION_COOKIE_NAME, createSessionToken } from '@/lib/auth-helper';
+import type { UserRole } from '@/lib/auth-helper';
 
 let mongoServer: MongoMemoryServer;
+const createSessionCookie = (role: UserRole): string =>
+  `${SESSION_COOKIE_NAME}=${createSessionToken({
+    username: `${role.toLowerCase()}-user`,
+    role,
+  })}`;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   process.env.MONGODB_URI = uri;
+  process.env.AUTH_SECRET = 'integration-test-secret';
   
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
@@ -41,7 +49,7 @@ describe('Imports API Integration Tests', () => {
     expect(body.meta.total).toBe(0);
   });
 
-  it('POST /api/imports - should fail if unauthorized role', async () => {
+  it('POST /api/imports - should fail when session cookie is missing', async () => {
     const material = await Material.create({
       name: 'Corn Seeds',
       type: 'Seeds',
@@ -51,9 +59,6 @@ describe('Imports API Integration Tests', () => {
 
     const req = new NextRequest('http://localhost/api/imports', {
       method: 'POST',
-      headers: {
-        'x-user-role': 'Operator', // Non-admin role
-      },
       body: JSON.stringify({
         date: new Date().toISOString(),
         supplierName: 'Seed Co',
@@ -69,6 +74,34 @@ describe('Imports API Integration Tests', () => {
     expect(body.error).toContain('Unauthorized');
   });
 
+  it('POST /api/imports - should fail with 403 for worker role', async () => {
+    const material = await Material.create({
+      name: 'Worker Attempted Import',
+      type: 'Seeds',
+      uom: 'kg',
+      safetyStock: 10,
+    });
+
+    const req = new NextRequest('http://localhost/api/imports', {
+      method: 'POST',
+      headers: {
+        cookie: createSessionCookie('Worker'),
+      },
+      body: JSON.stringify({
+        date: new Date().toISOString(),
+        supplierName: 'Seed Co',
+        materialId: material._id.toString(),
+        quantity: 50,
+        unitPrice: 5.5,
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe('Forbidden');
+  });
+
   it('POST /api/imports - should fail if quantity is zero or negative', async () => {
     const material = await Material.create({
       name: 'Pesticide X',
@@ -80,7 +113,7 @@ describe('Imports API Integration Tests', () => {
     const reqZero = new NextRequest('http://localhost/api/imports', {
       method: 'POST',
       headers: {
-        'x-user-role': 'Manager',
+        cookie: createSessionCookie('Manager'),
       },
       body: JSON.stringify({
         date: new Date().toISOString(),
@@ -99,7 +132,7 @@ describe('Imports API Integration Tests', () => {
     const reqNeg = new NextRequest('http://localhost/api/imports', {
       method: 'POST',
       headers: {
-        'x-user-role': 'Manager',
+        cookie: createSessionCookie('Manager'),
       },
       body: JSON.stringify({
         date: new Date().toISOString(),
@@ -126,7 +159,7 @@ describe('Imports API Integration Tests', () => {
     const req = new NextRequest('http://localhost/api/imports', {
       method: 'POST',
       headers: {
-        'x-user-role': 'FarmManager',
+        cookie: createSessionCookie('FarmManager'),
       },
       body: JSON.stringify({
         date: new Date().toISOString(),
@@ -164,7 +197,7 @@ describe('Imports API Integration Tests', () => {
     const req = new NextRequest('http://localhost/api/imports', {
       method: 'POST',
       headers: {
-        'x-user-role': 'Manager',
+        cookie: createSessionCookie('Manager'),
       },
       body: JSON.stringify({
         date: new Date().toISOString(),

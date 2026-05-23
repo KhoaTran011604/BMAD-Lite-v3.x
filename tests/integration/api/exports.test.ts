@@ -6,13 +6,21 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/exports/route';
 import Export from '@/models/Export';
 import Material from '@/models/Material';
+import { SESSION_COOKIE_NAME, createSessionToken } from '@/lib/auth-helper';
+import type { UserRole } from '@/lib/auth-helper';
 
 let mongoServer: MongoMemoryReplSet;
+const createSessionCookie = (role: UserRole): string =>
+  `${SESSION_COOKIE_NAME}=${createSessionToken({
+    username: `${role.toLowerCase()}-user`,
+    role,
+  })}`;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   const uri = mongoServer.getUri();
   process.env.MONGODB_URI = uri;
+  process.env.AUTH_SECRET = 'integration-test-secret';
 
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
@@ -44,7 +52,7 @@ describe('Exports API Integration Tests', () => {
     expect(body.meta.total).toBe(0);
   });
 
-  it('POST /api/exports - should fail if unauthorized role', async () => {
+  it('POST /api/exports - should fail when session cookie is missing', async () => {
     const material = await Material.create({
       name: 'Fertilizer A',
       type: 'Fertilizers',
@@ -55,9 +63,6 @@ describe('Exports API Integration Tests', () => {
 
     const req = new NextRequest('http://localhost/api/exports', {
       method: 'POST',
-      headers: {
-        'x-user-role': 'Operator',
-      },
       body: JSON.stringify({
         date: new Date().toISOString(),
         requesterName: 'Shift Lead',
@@ -74,6 +79,35 @@ describe('Exports API Integration Tests', () => {
     expect(body.error).toContain('Unauthorized');
   });
 
+  it('POST /api/exports - should fail with 403 for worker role', async () => {
+    const material = await Material.create({
+      name: 'Worker Attempted Export',
+      type: 'Tools',
+      uom: 'units',
+      safetyStock: 2,
+      currentStock: 10,
+    });
+
+    const req = new NextRequest('http://localhost/api/exports', {
+      method: 'POST',
+      headers: {
+        cookie: createSessionCookie('Worker'),
+      },
+      body: JSON.stringify({
+        date: new Date().toISOString(),
+        requesterName: 'Worker',
+        materialId: material._id.toString(),
+        quantity: 2,
+        destinationPurpose: 'Field B',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe('Forbidden');
+  });
+
   it('POST /api/exports - should reject invalid payloads', async () => {
     const material = await Material.create({
       name: 'Tool Kit',
@@ -86,7 +120,7 @@ describe('Exports API Integration Tests', () => {
     const req = new NextRequest('http://localhost/api/exports', {
       method: 'POST',
       headers: {
-        'x-user-role': 'Manager',
+        cookie: createSessionCookie('Manager'),
       },
       body: JSON.stringify({
         date: new Date().toISOString(),
@@ -118,7 +152,7 @@ describe('Exports API Integration Tests', () => {
     const req = new NextRequest('http://localhost/api/exports', {
       method: 'POST',
       headers: {
-        'x-user-role': 'FarmManager',
+        cookie: createSessionCookie('FarmManager'),
       },
       body: JSON.stringify({
         date: new Date().toISOString(),
@@ -154,7 +188,7 @@ describe('Exports API Integration Tests', () => {
     const req = new NextRequest('http://localhost/api/exports', {
       method: 'POST',
       headers: {
-        'x-user-role': 'Manager',
+        cookie: createSessionCookie('Manager'),
       },
       body: JSON.stringify({
         date: new Date('2026-05-23T08:00:00.000Z').toISOString(),
@@ -202,7 +236,7 @@ describe('Exports API Integration Tests', () => {
       const req = new NextRequest('http://localhost/api/exports', {
         method: 'POST',
         headers: {
-          'x-user-role': 'Manager',
+          cookie: createSessionCookie('Manager'),
         },
         body: JSON.stringify({
           date: new Date('2026-05-23T08:00:00.000Z').toISOString(),

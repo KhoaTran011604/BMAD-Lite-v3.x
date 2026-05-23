@@ -9,3 +9,5 @@
 | 3 | **Export Transactions & Inventory Safety** | Log outgoing material disbursements, deduct from current stock, and enforce negative inventory prevention. | 3 | [VERIFY] |
 | 4 | **Live Inventory & Smart Alerts Dashboard** | Provide farm owners and managers with a real-time analytics hub, valuations, and stock-out/near-expiry alerts. | 2 | [VERIFY] |
 | 5 | **Code Quality & Shared Helpers Refactor** | Eliminate N+1 queries, centralize datetime/currency formatters, and right-align numerical table columns. | 3 | [VERIFY] |
+| 6 | **User Authentication & Role-Based Access Control** | Secure the application with robust username/password credentials, secure cookie sessions, and page route navigation guards. | 4 | [TODO] |
+

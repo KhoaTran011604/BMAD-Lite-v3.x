@@ -1,11 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+
+import { useAuth } from '@/context/auth';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
 
   const menuItems = [
     {
@@ -44,6 +49,22 @@ export default function Sidebar() {
     },
   ];
 
+  const roleLabel = user?.role === 'FarmManager' ? 'Manager' : user?.role ?? 'Worker';
+  const roleBadgeClass = roleLabel === 'Worker' ? 'glass-badge-muted' : 'glass-badge-primary';
+
+  const handleLogout = async (): Promise<void> => {
+    setIsLoggingOut(true);
+    const result = await logout();
+    setIsLoggingOut(false);
+
+    if (!result.success) {
+      return;
+    }
+
+    router.push('/login');
+    router.refresh();
+  };
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -71,8 +92,28 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
+        <div className="sidebar-user-panel">
+          <p className="sidebar-user-name">{user?.username ?? 'Unknown User'}</p>
+          <span className={`glass-badge ${roleBadgeClass}`}>{roleLabel}</span>
+        </div>
+        <button
+          type="button"
+          className="glass-btn sidebar-logout-btn"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          aria-label="Logout and return to login page"
+        >
+          {isLoggingOut ? (
+            <>
+              <span className="spinner" aria-hidden="true" />
+              Logging out...
+            </>
+          ) : (
+            'Logout'
+          )}
+        </button>
         <p>BMAD-Lite Framework v3.0</p>
-        <p style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.6 }}>© 2026 AgriKeep Ltd.</p>
+        <p style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.6 }}>(c) 2026 AgriKeep Ltd.</p>
       </div>
     </aside>
   );

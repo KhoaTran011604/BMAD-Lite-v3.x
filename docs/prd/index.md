@@ -14,4 +14,6 @@
 - [Epic 3: Export Transactions & Inventory Safety](./epic-3-export-transactions-inventory-safety.md)
 - [Epic 4: Live Inventory & Smart Alerts Dashboard](./epic-4-live-inventory-smart-alerts-dashboard.md)
 - [Epic 5: Code Quality & Shared Helpers Refactor](./epic-5-code-quality-and-formatting-refactor.md)
+- [Epic 6: User Authentication & Role-Based Access Control](./epic-6-user-authentication-and-authorization.md)
 - [Next Steps](./next-steps.md)
+

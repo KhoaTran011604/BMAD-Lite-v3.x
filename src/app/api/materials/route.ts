@@ -3,6 +3,7 @@ import dbConnect from '@/lib/dbConnect';
 import Material from '@/models/Material';
 import Import from '@/models/Import';
 import Export from '@/models/Export';
+import { requireWriteAccess } from '@/lib/auth-guard';
 import { buildDashboardSummary } from '@/lib/utils';
 import { z } from 'zod';
 
@@ -70,16 +71,12 @@ export async function GET(req: NextRequest) {
 
 // POST /api/materials
 export async function POST(req: NextRequest) {
-  try {
-    // Simulated header check for role-based authorization (Farm Manager privileges)
-    const userRole = req.headers.get('x-user-role');
-    if (userRole !== 'Manager' && userRole !== 'FarmManager') {
-      return NextResponse.json(
-        { error: 'Unauthorized: Farm Manager privileges required' },
-        { status: 401 }
-      );
-    }
+  const writeAccess = requireWriteAccess(req);
+  if ('response' in writeAccess) {
+    return writeAccess.response;
+  }
 
+  try {
     await dbConnect();
     const body = await req.json();
 
