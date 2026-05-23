@@ -1,0 +1,17 @@
+# Goals and Background Context
+
+## Goals
+- Goal 1: Provide real-time stock visibility for central farm agricultural inputs and outputs.
+- Goal 2: Prevent operational downtime during key planting seasons through proactive safety stock alerts.
+- Goal 3: Eliminate waste and chemical spoilage using batch-level expiration date tracking.
+- Goal 4: Replace chaotic spreadsheets and paper logs with an elegant, mobile-friendly digital registry.
+
+## Background Context
+Farm managers and warehouse operators struggle to maintain accurate records of essential supplies such as seeds, fertilizers, pesticides, and tools. Spreadsheets are often updated late or contain errors, leading to unexpected stockouts during planting seasons or costly expiration of chemical products. Furthermore, there is little traceability regarding which staff member took what materials and for what purpose.
+
+**AgriKeep** addresses these pain points by offering a modern, premium web-based dashboard strictly focused on robust, real-time import (receipt) and export (disbursement) logging with built-in safety threshold and expiration monitors.
+
+## Change Log
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2026-05-23 | 1.0 | Initial PRD draft based on project brief | @planner |
