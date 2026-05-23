@@ -1,0 +1,156 @@
+# BMAD-Lite Module Graph Template
+# Defines the structure for docs/module-graph.md
+# Used by: Planner (*create-architecture final step), Scanner (*gen-progress), Reviewer (auto-update on PASS)
+template:
+  id: module-graph-template-v1
+  name: Module Relationship Graph
+  version: 1.0
+  output:
+    format: markdown
+    file: docs/module-graph.md
+    max_lines: 200  # Shard into docs/module-graph/ if exceeded
+
+# ============================================================================
+# STRUCTURE DEFINITION
+# The module-graph.md follows this exact structure
+# ============================================================================
+structure:
+  # --------------------------------------------------------------------------
+  # Section 1: Header
+  # --------------------------------------------------------------------------
+  header:
+    required: true
+    instruction: |
+      # Module Relationship Graph
+
+      > **READ THIS FIRST** when adding a new feature. Use the graph to identify related modules and stories.
+      >
+      > Last updated: {date}
+
+  # --------------------------------------------------------------------------
+  # Section 2: Architecture Overview (Mermaid Diagram)
+  # --------------------------------------------------------------------------
+  architecture_overview:
+    required: true
+    instruction: |
+      ## Architecture Overview
+
+      Mermaid `graph TB` diagram with:
+      - One `subgraph` per business domain (use UPPER_CASE ID + quoted label)
+      - Nodes inside each subgraph represent modules
+      - Node labels include technology or key detail (e.g., `[Module Name<br/>detail]`)
+      - Arrows show dependencies between modules:
+        - `-->` solid arrow = direct dependency
+        - `-.->` dotted arrow = indirect/optional dependency (e.g., audit logging)
+        - Add label on arrow when relationship needs clarification (e.g., `-->|auto-creates|`)
+
+      TEMPLATE:
+      ```mermaid
+      graph TB
+          subgraph DOMAIN_A["Domain A Label"]
+              MOD_A1[Module A1<br/>detail]
+              MOD_A2[Module A2<br/>detail]
+          end
+
+          subgraph DOMAIN_B["Domain B Label"]
+              MOD_B1[Module B1<br/>detail]
+          end
+
+          %% Domain A internal
+          MOD_A1 --> MOD_A2
+
+          %% Cross-domain
+          MOD_B1 --> MOD_A1
+          MOD_B1 -.->|optional| MOD_A2
+      ```
+
+      RULES:
+      - Group related modules into subgraphs by business domain
+      - Keep node IDs short and UPPER_SNAKE_CASE
+      - Use `<br/>` for multi-line node labels (not \n)
+      - Add comment lines (%%) to separate relationship groups
+      - Derived from: architecture data-models, components, core-workflows
+
+  # --------------------------------------------------------------------------
+  # Section 3: Module Details & Story References (Tables)
+  # --------------------------------------------------------------------------
+  module_details:
+    required: true
+    instruction: |
+      ## Module Details & Story References
+
+      One H3 subsection per domain (matching subgraphs from the diagram above).
+      Each subsection contains a table:
+
+      ### {Domain Name}
+      | Module | Key Files | Related Stories |
+      |--------|-----------|-----------------|
+      | {Module Name} | `{path1}`, `{path2}` | [{epic}.{story}](stories/{epic}.{story}.md) |
+
+      RULES:
+      - Key Files: relative paths to primary files (service, route, component, model)
+      - Related Stories: link format `[{id}](stories/{id}.md)` — comma separated
+      - If no stories exist yet (greenfield): use `[TODO]` placeholder
+      - Order: match the subgraph order from the diagram
+      - Derived from: architecture source-tree, rest-api-spec + PRD epic-list
+
+  # --------------------------------------------------------------------------
+  # Section 4: Shared / Cross-cutting (Table)
+  # --------------------------------------------------------------------------
+  shared_modules:
+    required: false
+    condition: "Project has shared/reusable components"
+    instruction: |
+      ### Shared / Cross-cutting
+      | Module | Key Files | Related Stories |
+      |--------|-----------|-----------------|
+      | {SharedModule} | `{path}` | [{id}](stories/{id}.md) |
+
+      Include: shared components, utility libraries, query key registries,
+      generic form/table wrappers, common hooks, etc.
+
+  # --------------------------------------------------------------------------
+  # Section 5: How to Use This Graph (Guide)
+  # --------------------------------------------------------------------------
+  usage_guide:
+    required: true
+    instruction: |
+      ## How to Use This Graph
+
+      **When adding a new feature:**
+      1. Identify which module(s) in the graph are affected
+      2. Follow the arrows to find related modules that may need updates
+      3. Read the related stories to understand existing patterns and decisions
+      4. Check `source-tree.json` for exact file paths in those modules
+
+      **Example**: Adding a new {example_domain} feature?
+      -> Look at {DOMAIN} subgraph -> follows pattern of {existing_module}
+      -> Needs: {typical files needed}
+      -> Read stories {example_stories} for established patterns
+
+# ============================================================================
+# GENERATION CONTEXT
+# Where to derive module-graph data from
+# ============================================================================
+data_sources:
+  # These architecture files provide the data for module-graph generation
+  diagram:
+    - docs/architecture/data-models.md        # Entities -> modules
+    - docs/architecture/components.md          # Services -> subgraphs
+    - docs/architecture/core-workflows.md      # Dependencies -> arrows
+    - docs/architecture/high-level-architecture.md  # Domain grouping
+  tables:
+    - docs/architecture/source-tree.md         # Key Files column
+    - docs/architecture/source-tree.json       # Exact file paths
+    - docs/architecture/rest-api-spec.md       # Route-based modules
+  stories:
+    - docs/prd/epic-list.md                    # Story references
+    - docs/prd/epic-*.md                       # Individual epic details
+
+# ============================================================================
+# MARKERS (for scanner-generated content)
+# ============================================================================
+markers:
+  - "[SCANNED]"     # Auto-detected from project scan
+  - "[INFERRED]"    # Guessed from structure/naming
+  - "[TODO]"        # Needs manual input (e.g., stories not yet created)

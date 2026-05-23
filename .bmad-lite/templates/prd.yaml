@@ -1,0 +1,293 @@
+# BMAD-Lite PRD Template
+# Distributed output: each section → separate file in docs/prd/
+template:
+  id: prd-template-v3
+  name: Product Requirements Document
+  version: 3.0
+  output:
+    format: markdown
+    mode: sharded  # Output directly to folder, NOT single file
+    folder: docs/prd/
+    index: docs/prd/index.md
+    max_lines_per_file: 200  # Shard further if any section exceeds this
+
+workflow:
+  mode: interactive
+  approach: pre-populate-and-validate  # BMAD-Lite: less strict
+  elicitation: advanced-elicitation
+
+# ============================================================================
+# SECTIONS — each section becomes its own file in docs/prd/
+# Section titles MUST match exactly for consistent file naming
+# ============================================================================
+sections:
+  # --------------------------------------------------------------------------
+  # Section 1: Goals and Background Context
+  # OUTPUT FILE: docs/prd/goals-and-background-context.md
+  # --------------------------------------------------------------------------
+  - id: goals-context
+    title: Goals and Background Context
+    output_file: goals-and-background-context.md
+    required: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. Check if Project Brief exists - use for context
+      2. PRE-POPULATE goals and background based on user's initial description
+      3. Present complete section for validation
+      4. Accept refinements
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Goals and Background Context
+
+      ## Goals
+      - [Goal 1: One-line desired outcome]
+      - [Goal 2: One-line desired outcome]
+
+      ## Background Context
+      [1-2 paragraphs: what problem this solves, why it matters]
+
+      ## Change Log
+      | Date | Version | Description | Author |
+      |------|---------|-------------|--------|
+      | {today} | 1.0 | Initial draft | @planner |
+
+    subsections:
+      - id: goals
+        title: Goals
+        type: bullet-list
+      - id: background
+        title: Background Context
+        type: paragraphs
+      - id: changelog
+        title: Change Log
+        type: table
+        columns: [Date, Version, Description, Author]
+
+  # --------------------------------------------------------------------------
+  # Section 2: Requirements
+  # OUTPUT FILE: docs/prd/requirements.md
+  # --------------------------------------------------------------------------
+  - id: requirements
+    title: Requirements
+    output_file: requirements.md
+    required: true
+    elicit: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. PRE-POPULATE functional and non-functional requirements
+      2. Present complete lists for validation
+      3. Focus questions on unclear requirements only
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Requirements
+
+      ## Functional
+      - FR1: [Requirement statement]
+      - FR2: [Requirement statement]
+
+      ## Non Functional
+      - NFR1: [Requirement statement]
+      - NFR2: [Requirement statement]
+
+    subsections:
+      - id: functional
+        title: Functional
+        type: numbered-list
+        prefix: FR
+      - id: non-functional
+        title: Non Functional
+        type: numbered-list
+        prefix: NFR
+
+  # --------------------------------------------------------------------------
+  # Section 3: User Interface Design Goals
+  # OUTPUT FILE: docs/prd/user-interface-design-goals.md
+  # --------------------------------------------------------------------------
+  - id: ui-goals
+    title: User Interface Design Goals
+    output_file: user-interface-design-goals.md
+    required: false
+    condition: "PRD has UX/UI requirements"
+    elicit: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. PRE-POPULATE all UI goals based on project context
+      2. Present complete section for validation
+      3. Mark assumptions clearly
+
+      OUTPUT FORMAT (this becomes its own file):
+      # User Interface Design Goals
+
+      ## Overall UX Vision
+      [2-3 sentences describing the intended user experience]
+
+      ## Key Interaction Paradigms
+      [How users will primarily interact with the system]
+
+      ## Core Screens and Views
+      - [Screen 1]: [Purpose]
+      - [Screen 2]: [Purpose]
+
+      ## Accessibility
+      {None | WCAG AA | WCAG AAA}
+
+      ## Branding
+      [Known branding requirements or "TBD"]
+
+      ## Target Device and Platforms
+      {Web Responsive | Mobile Only | Desktop Only | Cross-Platform}
+
+    choices:
+      accessibility: [None, WCAG AA, WCAG AAA]
+      platforms: [Web Responsive, Mobile Only, Desktop Only, Cross-Platform]
+
+  # --------------------------------------------------------------------------
+  # Section 4: Technical Assumptions
+  # OUTPUT FILE: docs/prd/technical-assumptions.md
+  # --------------------------------------------------------------------------
+  - id: technical-assumptions
+    title: Technical Assumptions
+    output_file: technical-assumptions.md
+    required: true
+    elicit: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. Check for tech-preferences.md - use to pre-populate
+      2. PRE-POPULATE technical decisions with rationale
+      3. FOCUS elicitation on critical choices
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Technical Assumptions
+
+      ## Repository Structure
+      {Monorepo | Polyrepo | Multi-repo}
+      Rationale: [Why this choice]
+
+      ## Service Architecture
+      {Monolith | Microservices | Serverless}
+      Rationale: [Why this choice]
+
+      ## Testing Requirements
+      {Unit Only | Unit + Integration | Full Testing Pyramid}
+      Rationale: [Why this choice]
+
+      ## Additional Technical Assumptions and Requests
+      - [Assumption 1 with rationale]
+      - [Assumption 2 with rationale]
+
+    choices:
+      repository: [Monorepo, Polyrepo, Multi-repo]
+      architecture: [Monolith, Microservices, Serverless]
+      testing: [Unit Only, Unit + Integration, Full Testing Pyramid]
+
+  # --------------------------------------------------------------------------
+  # Section 5: Epic List
+  # OUTPUT FILE: docs/prd/epic-list.md
+  # --------------------------------------------------------------------------
+  - id: epic-list
+    title: Epic List
+    output_file: epic-list.md
+    required: true
+    elicit: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. PRE-POPULATE epic list based on requirements
+      2. Present for approval BEFORE epic details
+      3. Epics must be logically sequential
+
+      CRITICAL RULES:
+      - Epic 1: Foundation + initial functionality
+      - Each epic delivers deployable, testable value
+      - Minimize epic count
+      - Cross-cutting concerns flow THROUGH epics
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Epic List
+
+      **Epic 1: {Title}**
+      {One sentence goal statement}
+
+      **Epic 2: {Title}**
+      {One sentence goal statement}
+
+      [Await user approval before proceeding to Epic Details]
+
+  # --------------------------------------------------------------------------
+  # Section 6: Epic Details (each epic → its own file)
+  # OUTPUT FILES: docs/prd/epic-1-{slug}.md, epic-2-{slug}.md, etc.
+  # --------------------------------------------------------------------------
+  - id: epic-details
+    title: "Epic {{epic_number}}: {{epic_title}}"
+    output_file: "epic-{{epic_number}}-{{epic_slug}}.md"
+    required: true
+    repeatable: true
+    elicit: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. After Epic List approved, detail each epic
+      2. PRE-POPULATE stories and AC
+      3. Present complete epic for validation
+      4. EACH EPIC is written to its own file
+
+      STORY RULES:
+      - Stories MUST be sequential within epic
+      - Each story = vertical slice
+      - Size for AI agent: 2-4 hours
+      - No story depends on later stories
+
+      OUTPUT FORMAT (each epic becomes its own file):
+      # Epic {N}: {Title}
+
+      **Goal:** {2-3 sentences describing objective and value}
+
+      ## Story {N}.1: {Title}
+      **As a** {user type},
+      **I want** {action},
+      **so that** {benefit}.
+
+      **Acceptance Criteria:**
+      1. Given {context}, When {action}, Then {expected}
+      2. Given {context}, When {action}, Then {expected}
+
+      ## Story {N}.2: {Title}
+      [Same format...]
+
+    story_template: |
+      As a {{user_type}},
+      I want {{action}},
+      so that {{benefit}}.
+
+  # --------------------------------------------------------------------------
+  # Section 7: Checklist Results Report
+  # OUTPUT FILE: docs/prd/checklist-results-report.md
+  # --------------------------------------------------------------------------
+  - id: checklist-results
+    title: Checklist Results Report
+    output_file: checklist-results-report.md
+    required: false
+    instruction: |
+      Optional - run planning-checklist if needed.
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Checklist Results Report
+
+      [Results from planning-checklist.md execution]
+      [Or "Skipped - simple project"]
+
+  # --------------------------------------------------------------------------
+  # Section 8: Next Steps
+  # OUTPUT FILE: docs/prd/next-steps.md
+  # --------------------------------------------------------------------------
+  - id: next-steps
+    title: Next Steps
+    output_file: next-steps.md
+    required: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Next Steps
+
+      ## UX Expert Prompt
+      [If project has UI: prompt for UX work]
+
+      ## Architect Prompt
+      Run `@planner create-architecture` with this PRD to create the technical architecture.

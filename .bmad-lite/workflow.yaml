@@ -1,0 +1,226 @@
+# BMAD-Lite Unified Workflow
+# Single workflow file covering all phases
+version: "1.0"
+name: "BMAD-Lite Unified Workflow"
+description: |
+  Simplified 3-phase workflow for AI-driven development.
+  Combines planning, execution, and optional review.
+
+# ============================================================================
+# PHASE 1: PLANNING
+# ============================================================================
+planning:
+  agent: planner
+  description: "Strategic planning phase - create PRD and Architecture"
+
+  steps:
+    - id: brainstorm
+      action: brainstorm
+      optional: true
+      creates: docs/project-brief.md
+      description: |
+        Optional brainstorming session.
+        Skip if requirements are already clear.
+        Use when starting from scratch or unclear scope.
+
+    - id: create-prd
+      action: create-prd
+      creates: docs/prd.md
+      template: templates/prd.yaml
+      description: |
+        Create Product Requirements Document.
+        APPROACH: Pre-populate sections with educated guesses,
+        then present complete sections for user validation.
+        Focus elicitation on critical decisions only.
+
+    - id: create-architecture
+      action: create-architecture
+      creates: docs/architecture.md
+      requires: docs/prd.md
+      template: templates/architecture.yaml
+      description: |
+        Create Architecture Document from PRD.
+        CRITICAL: Tech stack table is single source of truth.
+        All technical decisions must have rationale.
+
+    - id: create-epics
+      action: create-epic
+      optional: true
+      creates: docs/epics/epic-{n}.md
+      requires: docs/prd.md
+      template: templates/epic.yaml
+      task: tasks/create-epic.md
+      description: |
+        Optional: Create separate epic files.
+        Can use PRD epic sections directly instead.
+        Useful for large projects with many epics.
+        See tasks/create-epic.md for detailed workflow.
+
+    - id: validate-planning
+      action: planning-checklist
+      optional: true
+      description: |
+        Optional validation of planning artifacts.
+        Run for complex projects or team requirements.
+
+  handoff: |
+    Planning complete. Documents created in docs/ folder.
+    Next: Run /execute or @executor draft-story to begin development.
+
+# ============================================================================
+# PHASE 2: EXECUTION (Repeating per story)
+# ============================================================================
+execution:
+  agent: executor
+  description: "Development phase - implement stories with skill integration"
+  repeats: for_each_story
+
+  steps:
+    - id: draft-story
+      action: draft-story
+      creates: docs/stories/{epic}.{story}.md
+      template: templates/story.yaml
+      task: tasks/create-story.md
+      description: |
+        Create story from epic/PRD.
+        Include: AC, tasks, dev notes, suggested skills.
+        Status: Draft
+        See tasks/create-story.md for detailed workflow.
+
+    - id: validate-story
+      action: story-checklist
+      optional: true
+      description: |
+        Optional validation of story draft.
+        Recommended for complex or high-risk stories.
+
+    - id: approve-story
+      action: set-status
+      status: Approved
+      description: |
+        User approves story for implementation.
+        Can skip for low-risk/simple stories.
+
+    - id: implement
+      action: develop
+      updates: docs/stories/{epic}.{story}.md
+      description: |
+        Implement story tasks.
+        USE SKILLS as appropriate:
+        - @test-driven-development for TDD
+        - @systematic-debugging for debugging
+        - @{framework}-best-practices for framework guidance
+        Update checkboxes and file list as you progress.
+
+    - id: validate-completion
+      action: done-checklist
+      description: |
+        Validate story completion.
+        All tasks done, tests pass.
+        Status: Ready for Review
+
+  handoff: |
+    Story implementation complete.
+    Options:
+    1. Run /review or @reviewer review-story {story} for quality review
+    2. Mark as Done and continue to next story
+
+# ============================================================================
+# PHASE 3: REVIEW (Optional)
+# ============================================================================
+review:
+  agent: reviewer
+  description: "Quality review phase - validate implementation"
+  optional: true
+
+  steps:
+    - id: review-story
+      action: review-story
+      updates: docs/stories/{epic}.{story}.md
+      description: |
+        Comprehensive story review.
+        Decision: PASS / CONCERNS / FAIL
+        Adaptive depth based on story complexity.
+
+    - id: address-feedback
+      condition: review_has_concerns
+      description: |
+        Return to executor to address feedback.
+        Fix issues, then re-review.
+
+    - id: mark-done
+      action: set-status
+      status: Done
+      description: |
+        Story approved and complete.
+        Update progress tracking.
+
+  handoff: |
+    Review complete. Story marked as Done.
+    Continue to next story with /execute draft-story.
+
+# ============================================================================
+# QUICK COMMANDS REFERENCE
+# ============================================================================
+commands:
+  planning:
+    - "/plan brainstorm - Start brainstorming session"
+    - "/plan prd - Create PRD document"
+    - "/plan arch - Create Architecture document"
+    - "/plan epic - Create epic files"
+    - "/plan validate - Run planning checklist"
+
+  execution:
+    - "/execute draft - Draft next story"
+    - "/execute develop - Implement current story"
+    - "/execute done - Validate story completion"
+    - "/execute use-skill {name} - Use specific skill"
+
+  review:
+    - "/review story {id} - Review specific story"
+    - "/review quick {id} - Quick review for simple changes"
+
+  tracking:
+    - "/status - Show project progress"
+    - "/status story {id} - Show specific story status"
+
+# ============================================================================
+# FLOW DIAGRAM
+# ============================================================================
+flow_diagram: |
+  ```
+  START
+    │
+    ▼
+  ┌─────────────────────────────────────────┐
+  │  PHASE 1: PLANNING (@planner)           │
+  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
+  │  │Brainstorm│→│Create   │→│Create   │  │
+  │  │(optional)│  │PRD      │  │Arch     │  │
+  │  └─────────┘  └─────────┘  └─────────┘  │
+  └─────────────────────────────────────────┘
+    │
+    ▼
+  ┌─────────────────────────────────────────┐
+  │  PHASE 2: EXECUTION (@executor)         │
+  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
+  │  │Draft    │→│Implement │→│Validate │  │
+  │  │Story    │  │+ Skills  │  │Done     │  │
+  │  └─────────┘  └─────────┘  └─────────┘  │
+  │        ↑                        │       │
+  │        └────────────────────────┘       │
+  │              (repeat per story)         │
+  └─────────────────────────────────────────┘
+    │
+    ▼
+  ┌─────────────────────────────────────────┐
+  │  PHASE 3: REVIEW (@reviewer) [optional] │
+  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
+  │  │Review   │→│Address  │→│Mark     │  │
+  │  │Story    │  │Feedback │  │Done     │  │
+  │  └─────────┘  └─────────┘  └─────────┘  │
+  └─────────────────────────────────────────┘
+    │
+    ▼
+   END
+  ```

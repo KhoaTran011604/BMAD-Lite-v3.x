@@ -1,0 +1,116 @@
+# BMAD-Lite Configuration
+# Simplified workflow inspired by BMAD methodology
+version: "1.0"
+
+# Project Information (customize per project)
+project:
+  name: ""  # Set your project name
+  type: fullstack  # backend | frontend | fullstack
+  description: ""
+
+# Document Locations
+documents:
+  prd: docs/prd/index.md              # Sharded - see docs/prd/ folder
+  architecture: docs/architecture/index.md  # Sharded - see docs/architecture/ folder
+  epics_folder: docs/epics/
+
+# Task Tracking
+tracking:
+  location: docs/
+  progress_file: progress/index.md    # Sharded - see docs/progress/ folder
+  story_location: stories/
+  story_pattern: "{epic}.{story}.md"  # e.g., 1.1.md, 1.2.md
+
+# Agent Configuration
+agents:
+  planner:
+    file: .bmad-lite/agents/planner.md
+    description: "Strategic Planner - handles PRD, Architecture, Epic planning"
+    templates:
+      - prd.yaml
+      - architecture.yaml
+      - epic.yaml
+
+  executor:
+    file: .bmad-lite/agents/executor.md
+    description: "Technical Executor - handles story creation and implementation"
+    templates:
+      - story.yaml
+    dev_context_files:  # Always load these for dev context
+      - docs/module-graph.md               # READ FIRST - module relationships
+      - docs/architecture/tech-stack.md     # SINGLE SOURCE OF TRUTH
+      - docs/architecture/source-tree.md    # Folder-level overview
+      - docs/architecture/source-tree.json  # Exact file paths
+      - docs/architecture/coding-standards.md
+
+  reviewer:
+    file: .bmad-lite/agents/reviewer.md
+    description: "Quality Reviewer - optional QA and acceptance validation"
+    optional: true
+
+  scanner:
+    file: .bmad-lite/agents/scanner.md
+    description: "Brownfield Scanner - fast project reconnaissance and BMad-Lite doc bootstrapping"
+    optional: true
+    scan_depth: surface  # surface | moderate — never deep
+    templates:
+      - progress.yaml
+    tasks:
+      - scan-project.md
+      - gen-arch.md
+      - gen-prd.md
+      - gen-progress.md
+
+# Skill Integration
+skills:
+  enabled: true
+  discovery_paths:
+    - Skills/  # Main skills folder in this repo
+    - .claude/skills/  # Claude Code standard path
+  suggested_skills:
+    testing: test-driven-development
+    debugging: systematic-debugging
+    fullstack: senior-fullstack
+    react: react-best-practices
+    api: api-design-principles
+
+# Workflow Settings
+workflow:
+  # Less strict mode - pre-populate and validate instead of asking everything
+  less_strict: true
+
+  # Skip optional validations for speed
+  skip_optional_validation: false
+
+  # Auto-approve simple/low-risk stories
+  auto_approve_simple_stories: false
+
+  # Story status lifecycle
+  story_statuses:
+    - Draft
+    - Approved
+    - InProgress
+    - Review
+    - Done
+
+# Language
+language:
+  output: english  # ALL docs, comments, commits, stories MUST be in English
+  exception: ui-labels  # Vietnamese allowed in user-facing UI strings
+
+# Output Settings
+output:
+  # Use markdown for all documents
+  format: markdown
+
+  # Distributed output mode: each section → separate file (NOT monolith)
+  mode: sharded
+
+  # Max lines per file before splitting further
+  max_lines_per_file: 200
+
+  # Include source references in dev notes
+  include_source_refs: true
+
+  # Auto-generate suggested skills based on story content
+  auto_suggest_skills: true

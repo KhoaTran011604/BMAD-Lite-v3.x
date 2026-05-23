@@ -1,0 +1,273 @@
+# BMAD-Lite Story Template
+# Task-focused story structure with skill integration
+template:
+  id: bmad-lite-story-v1
+  name: Story Document
+  version: 1.0
+  output:
+    format: markdown
+    filename: docs/stories/{epic}.{story}.md
+    title: "Story {epic}.{story}: {title}"
+
+# ============================================================================
+# STORY STRUCTURE
+# ============================================================================
+sections:
+  # --------------------------------------------------------------------------
+  # Header with Status
+  # --------------------------------------------------------------------------
+  - id: header
+    title: "Story {epic}.{story}: {title}"
+    instruction: |
+      OUTPUT FORMAT:
+      # Story {epic}.{story}: {title}
+
+      **Status:** {Draft | Approved | InProgress | Review | Done}
+      **Epic:** {epic_title}
+      **Created:** {date}
+      **Last Updated:** {date}
+
+  # --------------------------------------------------------------------------
+  # Story Statement
+  # --------------------------------------------------------------------------
+  - id: story
+    title: Story
+    required: true
+    owner: executor  # Only executor creates, no one modifies
+    instruction: |
+      Copy from epic/PRD. Use Gherkin format.
+
+      OUTPUT FORMAT:
+      ## Story
+
+      **As a** {user_type},
+      **I want** {action},
+      **so that** {benefit}.
+
+  # --------------------------------------------------------------------------
+  # Acceptance Criteria
+  # --------------------------------------------------------------------------
+  - id: acceptance-criteria
+    title: Acceptance Criteria
+    required: true
+    owner: executor  # Only executor creates, no one modifies
+    type: numbered-list
+    instruction: |
+      Copy from epic/PRD. Use Given-When-Then format.
+      These are the source of truth for what "done" means.
+
+      OUTPUT FORMAT:
+      ## Acceptance Criteria
+
+      1. Given {context}, When {action}, Then {expected}
+      2. Given {context}, When {action}, Then {expected}
+      3. Given {context}, When {action}, Then {expected}
+
+  # --------------------------------------------------------------------------
+  # Tasks (Executable)
+  # --------------------------------------------------------------------------
+  - id: tasks
+    title: Tasks
+    required: true
+    type: checkbox-list
+    editable: true  # Executor updates checkboxes
+    instruction: |
+      Break down into specific tasks with AC references.
+      Each task should be completable in one focused session.
+      Update checkboxes as tasks are completed.
+
+      OUTPUT FORMAT:
+      ## Tasks
+
+      - [ ] Task 1: {description} (AC: 1, 2)
+        - [ ] Subtask 1.1: {specific action}
+        - [ ] Subtask 1.2: {specific action}
+      - [ ] Task 2: {description} (AC: 3)
+        - [ ] Subtask 2.1: {specific action}
+      - [ ] Task 3: {description} (AC: 1, 2, 3)
+        - [ ] Write tests
+        - [ ] Verify all AC met
+
+  # --------------------------------------------------------------------------
+  # Dev Notes (Context)
+  # --------------------------------------------------------------------------
+  - id: dev-notes
+    title: Dev Notes
+    required: true
+    owner: executor  # Only executor creates, no one modifies
+    instruction: |
+      CRITICAL: Include ONLY information from architecture docs.
+      Every technical detail MUST have source reference.
+
+      OUTPUT FORMAT:
+      ## Dev Notes
+
+      ### Relevant Files
+      - `src/path/to/file.ts` - {purpose}
+      [Source: docs/architecture.md#source-tree]
+
+      ### Data Models
+      - {Model}: {key fields}
+      [Source: docs/architecture.md#data-models]
+
+      ### API Endpoints
+      - `{METHOD} /api/endpoint` - {purpose}
+      [Source: docs/architecture.md#api-spec]
+
+      ### Testing Requirements
+      - Unit tests for: {components}
+      - Integration tests for: {scenarios}
+      [Source: docs/architecture.md#test-strategy]
+
+      ### Coding Standards
+      - {relevant standard}
+      [Source: docs/architecture.md#coding-standards]
+
+      ### Previous Story Insights
+      {If applicable, key learnings from previous story}
+      [Source: docs/stories/{prev}.md#dev-record]
+
+  # --------------------------------------------------------------------------
+  # Suggested Skills
+  # --------------------------------------------------------------------------
+  - id: suggested-skills
+    title: Suggested Skills
+    required: true
+    instruction: |
+      List skills that may help with implementation.
+      Based on task types and technologies involved.
+
+      OUTPUT FORMAT:
+      ## Suggested Skills
+
+      Based on this story's requirements, consider using:
+
+      - **@test-driven-development** - TDD approach for implementation
+        - Use when: Writing new features with clear AC
+        - Benefit: Ensures AC are met with test coverage
+
+      - **@systematic-debugging** - Debugging methodology
+        - Use when: Encountering issues during implementation
+        - Benefit: Structured approach to finding root cause
+
+      - **@{framework}-best-practices** - Framework-specific guidance
+        - Use when: Implementing {framework} components
+        - Benefit: Follow established patterns
+
+      To use a skill: `@executor use-skill {skill-name}`
+
+  # --------------------------------------------------------------------------
+  # Change Log
+  # --------------------------------------------------------------------------
+  - id: change-log
+    title: Change Log
+    required: true
+    type: table
+    editable: true
+    instruction: |
+      Track document changes.
+
+      OUTPUT FORMAT:
+      ## Change Log
+
+      | Date | Version | Description | Author |
+      |------|---------|-------------|--------|
+      | {date} | 1.0 | Initial draft | @executor |
+
+  # --------------------------------------------------------------------------
+  # Dev Record (Populated during implementation)
+  # --------------------------------------------------------------------------
+  - id: dev-record
+    title: Dev Record
+    required: true
+    editable: true  # Executor updates during implementation
+    instruction: |
+      Populated by executor during implementation.
+      Track agent model, decisions, and files modified.
+
+      OUTPUT FORMAT:
+      ## Dev Record
+
+      ### Agent Model
+      {Model name and version used for implementation}
+
+      ### Completion Notes
+      - Task 1: {notes on implementation}
+      - Task 2: {notes on implementation}
+      - Challenges: {any challenges encountered}
+      - Decisions: {any decisions made during implementation}
+
+      ### File List
+      **Created:**
+      - `src/path/to/new-file.ts` - {purpose}
+
+      **Modified:**
+      - `src/path/to/existing-file.ts` - {what changed}
+
+      **Deleted:**
+      - `src/path/to/old-file.ts` - {reason}
+
+  # --------------------------------------------------------------------------
+  # Review Results (Optional - from Reviewer)
+  # --------------------------------------------------------------------------
+  - id: review-results
+    title: Review Results
+    required: false
+    editable: true  # Reviewer populates
+    instruction: |
+      Populated by reviewer agent (optional).
+
+      OUTPUT FORMAT:
+      ## Review Results
+
+      **Reviewer:** @reviewer
+      **Date:** {date}
+      **Decision:** {PASS | CONCERNS | FAIL}
+
+      ### AC Validation
+      | AC | Status | Notes |
+      |----|--------|-------|
+      | 1  | ✓ | {notes} |
+      | 2  | ✓ | {notes} |
+      | 3  | ⚠️ | {notes} |
+
+      ### Issues Found
+      - {issue if any}
+
+      ### Recommendations
+      - {recommendation if any}
+
+# ============================================================================
+# STATUS LIFECYCLE
+# ============================================================================
+status_lifecycle:
+  - Draft: "Story created, awaiting review/approval"
+  - Approved: "Ready for implementation"
+  - InProgress: "Currently being implemented"
+  - Review: "Implementation complete, awaiting review"
+  - Done: "Story complete and approved"
+
+# ============================================================================
+# SECTION PERMISSIONS
+# ============================================================================
+permissions:
+  story:
+    owner: executor
+    editable: false
+  acceptance-criteria:
+    owner: executor
+    editable: false
+  tasks:
+    owner: executor
+    editable: true  # Checkboxes only
+  dev-notes:
+    owner: executor
+    editable: false
+  dev-record:
+    owner: executor
+    editable: true
+  review-results:
+    owner: reviewer
+    editable: true
+  change-log:
+    editable: true

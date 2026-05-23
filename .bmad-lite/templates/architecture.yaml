@@ -1,0 +1,523 @@
+# BMAD-Lite Architecture Template
+# Distributed output: each section → separate file in docs/architecture/
+template:
+  id: architecture-template-v3
+  name: Architecture Document
+  version: 3.0
+  output:
+    format: markdown
+    mode: sharded  # Output directly to folder, NOT single file
+    folder: docs/architecture/
+    index: docs/architecture/index.md
+    max_lines_per_file: 200  # Shard further if any section exceeds this
+
+workflow:
+  mode: interactive
+  approach: pre-populate-and-validate
+  elicitation: advanced-elicitation
+  requires: docs/prd/index.md  # Read sharded PRD
+
+# ============================================================================
+# SECTIONS — each section becomes its own file in docs/architecture/
+# Section titles MUST match exactly for consistent file naming
+# ============================================================================
+sections:
+  # --------------------------------------------------------------------------
+  # Section 1: Introduction
+  # OUTPUT FILE: docs/architecture/introduction.md
+  # --------------------------------------------------------------------------
+  - id: introduction
+    title: Introduction
+    output_file: introduction.md
+    required: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. Read PRD (docs/prd/index.md → relevant shards) first
+      2. PRE-POPULATE introduction based on PRD
+      3. Check for starter templates
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Introduction
+
+      This document defines the technical architecture for {{project_name}}.
+
+      **PRD Reference:** [docs/prd/index.md](../prd/index.md)
+
+      ## Starter Template or Existing Project
+      {Yes/No - specify if yes, or N/A}
+
+      ## Change Log
+      | Date | Version | Description | Author |
+      |------|---------|-------------|--------|
+      | {today} | 1.0 | Initial architecture | @planner |
+
+  # --------------------------------------------------------------------------
+  # Section 2: High Level Architecture
+  # OUTPUT FILE: docs/architecture/high-level-architecture.md
+  # --------------------------------------------------------------------------
+  - id: high-level-architecture
+    title: High Level Architecture
+    output_file: high-level-architecture.md
+    required: true
+    elicit: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. PRE-POPULATE based on PRD Technical Assumptions
+      2. Present for validation
+
+      OUTPUT FORMAT (this becomes its own file):
+      # High Level Architecture
+
+      ## Technical Summary
+      [Brief 3-5 sentence overview of architectural approach]
+
+      ## High Level Overview
+      [Describe main architectural style, repository structure, service architecture]
+
+      ## High Level Project Diagram
+      ```mermaid
+      graph TD
+          A[Client] --> B[API Gateway]
+          B --> C[Service Layer]
+          C --> D[Database]
+      ```
+
+      ## Architectural and Design Patterns
+      - **Pattern 1:** [Description] - _Rationale:_ [Why]
+      - **Pattern 2:** [Description] - _Rationale:_ [Why]
+
+  # --------------------------------------------------------------------------
+  # Section 3: Tech Stack (CRITICAL — Single Source of Truth)
+  # OUTPUT FILE: docs/architecture/tech-stack.md
+  # --------------------------------------------------------------------------
+  - id: tech-stack
+    title: Tech Stack
+    output_file: tech-stack.md
+    required: true
+    elicit: true
+    critical: true
+    instruction: |
+      CRITICAL: This is the DEFINITIVE technology selection.
+      All other documents reference this file.
+      Pin specific versions (avoid "latest").
+
+      BMAD-LITE APPROACH:
+      1. Pre-populate from PRD Technical Assumptions
+      2. Check tech-preferences.md
+      3. Present table for validation
+      4. ALL choices must have RATIONALE
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Tech Stack
+
+      ## Cloud Infrastructure
+      - **Provider:** {cloud_provider}
+      - **Key Services:** {services}
+      - **Deployment Regions:** {regions}
+
+      ## Technology Stack Table
+      | Category | Technology | Version | Purpose | Rationale |
+      |----------|------------|---------|---------|-----------|
+      | Language | TypeScript | 5.x | Primary language | Type safety |
+      | Runtime | Node.js | 20.x LTS | Server runtime | Stability |
+
+  # --------------------------------------------------------------------------
+  # Section 4: Data Models
+  # OUTPUT FILE: docs/architecture/data-models.md
+  # --------------------------------------------------------------------------
+  - id: data-models
+    title: Data Models
+    output_file: data-models.md
+    required: true
+    elicit: true
+    instruction: |
+      BMAD-LITE APPROACH:
+      1. Identify entities from PRD requirements
+      2. PRE-POPULATE models with key attributes
+      3. Present for validation
+
+      NOTE: If this section exceeds 200 lines, split into:
+      - data-models.md (summary + relationships)
+      - data-models-interfaces.md (TypeScript interfaces)
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Data Models
+
+      ## {EntityName}
+      **Purpose:** {What this entity represents}
+
+      **Key Attributes:**
+      - id: string (primary key)
+      - {attribute}: {type} - {description}
+      - createdAt: timestamp
+      - updatedAt: timestamp
+
+      **Relationships:**
+      - {relationship description}
+
+      ## TypeScript Interfaces
+      ```typescript
+      interface EntityName {
+        id: string;
+        // ...
+      }
+      ```
+
+  # --------------------------------------------------------------------------
+  # Section 5: Components
+  # OUTPUT FILE: docs/architecture/components.md
+  # --------------------------------------------------------------------------
+  - id: components
+    title: Components
+    output_file: components.md
+    required: true
+    elicit: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Components
+
+      ## {ComponentName}
+      **Responsibility:** {What this component does}
+      **Key Interfaces:** {APIs it exposes}
+      **Dependencies:** {Other components it depends on}
+      **Technology Stack:** {Specific tech for this component}
+
+      ## Component Diagrams
+      ```mermaid
+      graph LR
+          A[Component A] --> B[Component B]
+      ```
+
+  # --------------------------------------------------------------------------
+  # Section 6: External APIs
+  # OUTPUT FILE: docs/architecture/external-apis.md
+  # --------------------------------------------------------------------------
+  - id: external-apis
+    title: External APIs
+    output_file: external-apis.md
+    required: false
+    condition: "Project requires external API integrations"
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # External APIs
+
+      ## {API Name} API
+      - **Purpose:** {why needed}
+      - **Documentation:** {url}
+      - **Authentication:** {method}
+      - **Rate Limits:** {limits}
+
+      [If no external APIs: "No external API integrations required."]
+
+  # --------------------------------------------------------------------------
+  # Section 7: Core Workflows
+  # OUTPUT FILE: docs/architecture/core-workflows.md
+  # --------------------------------------------------------------------------
+  - id: core-workflows
+    title: Core Workflows
+    output_file: core-workflows.md
+    required: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Core Workflows
+
+      ## {Workflow Name}
+      [Description of the workflow]
+
+      ```mermaid
+      sequenceDiagram
+          participant User
+          participant API
+          participant DB
+          User->>API: Request
+          API->>DB: Query
+          DB-->>API: Result
+          API-->>User: Response
+      ```
+
+  # --------------------------------------------------------------------------
+  # Section 8: REST API Spec
+  # OUTPUT FILE: docs/architecture/rest-api-spec.md
+  # --------------------------------------------------------------------------
+  - id: rest-api-spec
+    title: REST API Spec
+    output_file: rest-api-spec.md
+    required: false
+    condition: "Project includes REST API"
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # REST API Spec
+
+      ## API Style
+      {REST | GraphQL | tRPC}
+
+      ## Base URL
+      `/api/v1`
+
+      ## Authentication
+      {JWT | Session | OAuth2}
+
+      ## Common Response Format
+      ```json
+      { "success": true, "data": {}, "message": "" }
+      ```
+
+      ## Endpoints
+
+      ### {Resource}
+      | Method | Endpoint | Description | Auth |
+      |--------|----------|-------------|------|
+      | GET | /{resource} | List | Yes |
+      | POST | /{resource} | Create | Yes |
+
+  # --------------------------------------------------------------------------
+  # Section 9: Database Schema
+  # OUTPUT FILE: docs/architecture/database-schema.md
+  # --------------------------------------------------------------------------
+  - id: database-schema
+    title: Database Schema
+    output_file: database-schema.md
+    required: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Database Schema
+
+      ## Collections Overview
+
+      ### {collection_name}
+      | Field | Type | Constraints | Description |
+      |-------|------|-------------|-------------|
+      | _id | ObjectId | PK | Primary key |
+
+      ## Indexes
+      - {index description}
+
+      ## Entity Relationship Diagram
+      ```mermaid
+      erDiagram
+          User ||--o{ Order : places
+      ```
+
+  # --------------------------------------------------------------------------
+  # Section 10: Source Tree
+  # OUTPUT FILE: docs/architecture/source-tree.md
+  # --------------------------------------------------------------------------
+  - id: source-tree
+    title: Source Tree
+    output_file: source-tree.md
+    required: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Source Tree
+
+      ```
+      project-root/
+      ├── src/
+      │   ├── components/
+      │   ├── services/
+      │   ├── models/
+      │   └── utils/
+      ├── tests/
+      └── docs/
+      ```
+
+  # --------------------------------------------------------------------------
+  # Section 11: Infrastructure and Deployment
+  # OUTPUT FILE: docs/architecture/infrastructure-and-deployment.md
+  # --------------------------------------------------------------------------
+  - id: infrastructure-deployment
+    title: Infrastructure and Deployment
+    output_file: infrastructure-and-deployment.md
+    required: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Infrastructure and Deployment
+
+      ## Deployment Strategy
+      - **Strategy:** {Blue-Green | Rolling}
+      - **CI/CD Platform:** {GitHub Actions}
+
+      ## Environments
+      - **Development:** {description}
+      - **Production:** {description}
+
+      ## Environment Promotion Flow
+      ```
+      Development → Staging → Production
+      ```
+
+      ## Rollback Strategy
+      - **Primary Method:** {method}
+
+      ## Environment Variables
+      [List required env vars]
+
+  # --------------------------------------------------------------------------
+  # Section 12: Error Handling Strategy
+  # OUTPUT FILE: docs/architecture/error-handling-strategy.md
+  # --------------------------------------------------------------------------
+  - id: error-handling-strategy
+    title: Error Handling Strategy
+    output_file: error-handling-strategy.md
+    required: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Error Handling Strategy
+
+      ## General Approach
+      - **Error Model:** {model}
+
+      ## Logging Standards
+      - **Format:** {JSON | text}
+      - **Levels:** DEBUG, INFO, WARN, ERROR
+
+      ## Error Handling Patterns
+
+      ### API Route Errors
+      - {pattern}
+
+      ### Business Logic Errors
+      - {pattern}
+
+  # --------------------------------------------------------------------------
+  # Section 13: Coding Standards
+  # OUTPUT FILE: docs/architecture/coding-standards.md
+  # --------------------------------------------------------------------------
+  - id: coding-standards
+    title: Coding Standards
+    output_file: coding-standards.md
+    required: true
+    instruction: |
+      CRITICAL: These are directives for AI agents. Keep MINIMAL but essential.
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Coding Standards
+
+      ## Core Standards
+      - **Languages & Runtimes:** {versions}
+      - **Style & Linting:** ESLint + Prettier
+
+      ## Naming Conventions
+      | Element | Convention | Example |
+      |---------|------------|---------|
+      | Files | kebab-case | user-service.ts |
+      | Components | PascalCase | UserProfile.tsx |
+
+      ## Critical Rules
+      - **Rule 1:** {description}
+
+  # --------------------------------------------------------------------------
+  # Section 14: Test Strategy and Standards
+  # OUTPUT FILE: docs/architecture/test-strategy-and-standards.md
+  # --------------------------------------------------------------------------
+  - id: test-strategy
+    title: Test Strategy and Standards
+    output_file: test-strategy-and-standards.md
+    required: true
+    instruction: |
+      OUTPUT FORMAT (this becomes its own file):
+      # Test Strategy and Standards
+
+      ## Testing Philosophy
+      - **Approach:** {TDD | Test-After}
+      - **Coverage Goals:** {targets}
+
+      ## Test Types and Organization
+
+      ### Unit Tests
+      - **Framework:** {framework}
+      - **Location:** alongside source
+
+      ### Integration Tests
+      - **Scope:** {coverage}
+
+      ## Test Data Management
+      - **Strategy:** {approach}
+
+  # --------------------------------------------------------------------------
+  # Section 15: Security
+  # OUTPUT FILE: docs/architecture/security.md
+  # --------------------------------------------------------------------------
+  - id: security
+    title: Security
+    output_file: security.md
+    required: true
+    critical: true
+    instruction: |
+      CRITICAL: Security must be addressed.
+
+      OUTPUT FORMAT (this becomes its own file):
+      # Security
+
+      ## Input Validation
+      - **Library:** {library}
+
+      ## Authentication & Authorization
+      - **Auth Method:** {JWT | Session}
+      - **RBAC Permissions Matrix:** {matrix}
+
+      ## Secrets Management
+      - **Development:** .env (git-ignored)
+      - **Production:** {secrets service}
+
+      ## API Security
+      - **Rate Limiting:** {implementation}
+      - **CORS Policy:** {config}
+      - **HTTPS Enforcement:** Required
+
+      ## Data Protection
+      - **Encryption in Transit:** TLS 1.3
+
+  # --------------------------------------------------------------------------
+  # Section 16: Checklist Results Report
+  # OUTPUT FILE: docs/architecture/checklist-results-report.md
+  # --------------------------------------------------------------------------
+  - id: checklist-results
+    title: Checklist Results Report
+    output_file: checklist-results-report.md
+    required: false
+    instruction: |
+      # Checklist Results Report
+      [Results or "Skipped"]
+
+  # --------------------------------------------------------------------------
+  # Section 17: Next Steps
+  # OUTPUT FILE: docs/architecture/next-steps.md
+  # --------------------------------------------------------------------------
+  - id: next-steps
+    title: Next Steps
+    output_file: next-steps.md
+    required: true
+    instruction: |
+      # Next Steps
+
+      ## Development
+      1. Run `/bmad-execute draft` to create first story
+      2. Track progress in `docs/progress/index.md`
+
+# ============================================================================
+# POST-ARCHITECTURE: Module Graph
+# Generated AFTER all architecture sections are complete
+# Uses separate template: .bmad-lite/templates/module-graph.yaml
+# OUTPUT FILE: docs/module-graph.md
+# ============================================================================
+post_architecture:
+  module_graph:
+    template: module-graph.yaml
+    output_file: docs/module-graph.md
+    required: true
+    trigger: after_all_sections_complete
+    instruction: |
+      AFTER all architecture files are written, generate docs/module-graph.md
+      using the structure defined in .bmad-lite/templates/module-graph.yaml.
+
+      DATA DERIVATION:
+      1. Read completed architecture files (data-models, components, core-workflows)
+      2. Extract modules/entities -> create Mermaid subgraphs by domain
+      3. Extract dependencies -> create arrows between modules
+      4. Read source-tree.json -> populate Key Files column
+      5. Read PRD epic-list (if exists) -> populate Related Stories column
+      6. If PRD not available -> use [TODO] placeholders for stories
+
+      This file is the ENTRY POINT for all future feature work.
+      It MUST be created before development can begin.

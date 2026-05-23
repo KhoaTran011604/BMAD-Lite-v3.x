@@ -1,0 +1,118 @@
+# BMAD-Lite Progress & Module Graph Template
+# Used by Scanner agent's *gen-progress command
+template:
+  id: progress-template-v1
+  name: Progress Tracker & Module Graph
+  version: 1.0
+  output:
+    format: markdown
+    mode: sharded
+    max_lines_per_file: 200
+
+# ============================================================================
+# FILE 1: Module Graph
+# OUTPUT FILE: docs/module-graph.md
+# ============================================================================
+module_graph:
+  output_file: docs/module-graph.md
+  required: false  # Skip if already created by gen-arch
+  skip_if_exists: true
+  canonical_template: .bmad-lite/templates/module-graph.yaml
+  instruction: |
+    CONDITIONAL: Only generate if docs/module-graph.md does NOT already exist.
+    If it exists (created by *gen-arch), skip and log: "module-graph.md already exists — skipping."
+
+    If generating, follow the structure defined in .bmad-lite/templates/module-graph.yaml:
+    - Mermaid graph TB with subgraphs per domain
+    - Module Details tables per domain (Module, Key Files, Related Stories)
+    - Shared/Cross-cutting table (if applicable)
+    - "How to Use This Graph" guide section
+    - Stories = [TODO] (populated later by Planner or Reviewer)
+
+  markers:
+    - "[SCANNED]"    # Auto-detected from scan
+    - "[INFERRED]"   # Guessed from structure
+    - "[TODO]"       # Needs manual input
+
+# ============================================================================
+# FILE 2: Progress Index
+# OUTPUT FILE: docs/progress/index.md
+# ============================================================================
+progress_index:
+  output_file: docs/progress/index.md
+  required: true
+  instruction: |
+    Generate initial progress tracker from scan results.
+
+    OUTPUT FORMAT:
+    # Project Progress
+
+    ## Summary
+
+    | Metric | Value |
+    |--------|-------|
+    | Total Epics | {N} [SCANNED] |
+    | Total Stories | {N} [SCANNED] |
+    | Completed | 0 |
+    | In Progress | 0 |
+    | Remaining | {N} |
+
+    ## Epic Progress
+
+    | # | Epic | Stories | Done | Status |
+    |---|------|---------|------|--------|
+    | 1 | {title} [INFERRED] | {N} | 0 | Not Started |
+
+    ## Progress Files
+
+    - [Epic 1-7 Progress](./epic-1-to-7.md) — when stories are tracked
+    - [Epic 8-10 Progress](./epic-8-to-10.md) — when applicable
+    - [Changelog](./changelog.md) — activity log
+
+    ## Change Log
+
+    | Date | Description |
+    |------|-------------|
+    | {date} | [SCANNED] Initial progress tracker created |
+
+  markers:
+    - "[SCANNED]"
+    - "[INFERRED]"
+
+# ============================================================================
+# FILE 3: Progress Epic Detail (optional, created per epic range)
+# OUTPUT FILE: docs/progress/epic-{range}.md
+# ============================================================================
+progress_epic_detail:
+  output_file: "docs/progress/epic-{range}.md"
+  required: false
+  instruction: |
+    Create when epics are being actively tracked.
+
+    OUTPUT FORMAT:
+    # Epic {range} Progress
+
+    ## Epic {N}: {Title}
+
+    | Story | Title | Status | Notes |
+    |-------|-------|--------|-------|
+    | {n}.1 | {title} | Not Started | |
+
+# ============================================================================
+# FILE 4: Changelog
+# OUTPUT FILE: docs/progress/changelog.md
+# ============================================================================
+changelog:
+  output_file: docs/progress/changelog.md
+  required: true
+  instruction: |
+    Generate initial changelog.
+
+    OUTPUT FORMAT:
+    # Changelog
+
+    ## Activity Log
+
+    | Date | Action | Details |
+    |------|--------|---------|
+    | {date} | [SCANNED] Project scanned | Initial BMad-Lite docs generated |

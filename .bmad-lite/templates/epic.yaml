@@ -1,0 +1,182 @@
+# BMAD-Lite Epic Template
+# Simplified epic structure for separate epic files
+template:
+  id: bmad-lite-epic-v1
+  name: Epic Document
+  version: 1.0
+  output:
+    format: markdown
+    filename: docs/epics/epic-{n}.md
+    title: "Epic {n}: {title}"
+
+# ============================================================================
+# EPIC STRUCTURE
+# ============================================================================
+sections:
+  # --------------------------------------------------------------------------
+  # Header
+  # --------------------------------------------------------------------------
+  - id: header
+    title: "Epic {n}: {title}"
+    instruction: |
+      OUTPUT FORMAT:
+      # Epic {n}: {title}
+
+      **Status:** {Planning | Ready | In Progress | Complete}
+      **PRD Reference:** docs/prd.md#epic-{n}
+
+  # --------------------------------------------------------------------------
+  # Goal
+  # --------------------------------------------------------------------------
+  - id: goal
+    title: Goal
+    required: true
+    instruction: |
+      Expanded goal statement (2-3 sentences).
+      Describe the objective and value this epic delivers.
+
+      OUTPUT FORMAT:
+      ## Goal
+
+      {2-3 sentences describing what this epic achieves and why it matters.
+      Should clearly state the user/business value delivered when complete.}
+
+  # --------------------------------------------------------------------------
+  # Stories
+  # --------------------------------------------------------------------------
+  - id: stories
+    title: Stories
+    required: true
+    repeatable: true
+    instruction: |
+      STORY RULES:
+      - Stories MUST be sequential
+      - Each story = vertical slice with complete functionality
+      - Size for AI agent: 2-4 hours of focused work
+      - No story depends on later stories
+      - Use Gherkin format for story statement
+      - Numbered AC with Given-When-Then format
+
+      OUTPUT FORMAT:
+      ## Stories
+
+      ### Story {n}.1: {title}
+
+      **As a** {user type},
+      **I want** {action},
+      **so that** {benefit}.
+
+      **Acceptance Criteria:**
+      1. Given {context}, When {action}, Then {expected}
+      2. Given {context}, When {action}, Then {expected}
+      3. Given {context}, When {action}, Then {expected}
+
+      **Dependencies:** {list dependencies or "None"}
+      **Estimated Effort:** 2-4 hours
+
+      ---
+
+      ### Story {n}.2: {title}
+      [Same format...]
+
+  # --------------------------------------------------------------------------
+  # Dependencies
+  # --------------------------------------------------------------------------
+  - id: dependencies
+    title: Epic Dependencies
+    required: false
+    instruction: |
+      List any dependencies on other epics or external factors.
+
+      OUTPUT FORMAT:
+      ## Epic Dependencies
+
+      - **Requires Epic {m}:** {reason}
+      - **External:** {any external dependencies}
+
+  # --------------------------------------------------------------------------
+  # Notes
+  # --------------------------------------------------------------------------
+  - id: notes
+    title: Notes
+    required: false
+    instruction: |
+      Any additional notes or considerations for this epic.
+
+      OUTPUT FORMAT:
+      ## Notes
+
+      - {Note 1}
+      - {Note 2}
+
+# ============================================================================
+# STORY TEMPLATE
+# ============================================================================
+story_template: |
+  ### Story {epic}.{story}: {title}
+
+  **As a** {user_type},
+  **I want** {action},
+  **so that** {benefit}.
+
+  **Acceptance Criteria:**
+  1. Given {context}, When {action}, Then {expected}
+
+  **Dependencies:** None
+  **Estimated Effort:** 2-4 hours
+
+# ============================================================================
+# EXAMPLE
+# ============================================================================
+example: |
+  # Epic 1: Foundation & Core Setup
+
+  **Status:** Ready
+  **PRD Reference:** docs/prd.md#epic-1
+
+  ## Goal
+
+  Establish the project foundation with basic infrastructure, authentication,
+  and a working deployment pipeline. By the end of this epic, we will have
+  a deployable application with user registration and login functionality.
+
+  ## Stories
+
+  ### Story 1.1: Project Setup and Health Check
+
+  **As a** developer,
+  **I want** a properly configured project with CI/CD and health check endpoint,
+  **so that** I can verify the deployment pipeline works correctly.
+
+  **Acceptance Criteria:**
+  1. Given the project is cloned, When I run `npm install`, Then all dependencies install without errors
+  2. Given the server is running, When I call GET /health, Then I receive 200 OK with status "ok"
+  3. Given I push to main, When CI runs, Then all tests pass and deployment succeeds
+
+  **Dependencies:** None
+  **Estimated Effort:** 2-3 hours
+
+  ---
+
+  ### Story 1.2: User Registration
+
+  **As a** new user,
+  **I want** to create an account with email and password,
+  **so that** I can access the application securely.
+
+  **Acceptance Criteria:**
+  1. Given I'm on the registration page, When I submit valid email and password, Then my account is created
+  2. Given I submit an existing email, When I try to register, Then I see an error message
+  3. Given I submit a weak password, When I try to register, Then I see password requirements
+
+  **Dependencies:** Story 1.1
+  **Estimated Effort:** 3-4 hours
+
+  ## Epic Dependencies
+
+  - None (this is the foundation epic)
+
+  ## Notes
+
+  - Use JWT for authentication tokens
+  - Password requirements: min 8 chars, 1 uppercase, 1 number
