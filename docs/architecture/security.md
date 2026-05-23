@@ -1,5 +1,7 @@
 # Security
 
+> [SCANNED — needs review] Inferred from auth dependencies and middleware
+
 ## Input Validation
 - **Validation Library:** Zod
 - **Validation Location:** API route boundary

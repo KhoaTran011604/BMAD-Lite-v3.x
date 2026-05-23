@@ -89,12 +89,21 @@ Reference: `docs/architecture/source-tree.json` in existing projects.
 
 ```json
 {
-  "src": {
-    "folderName": {
-      "subFolder": {
-        "_files": ["file1.ts", "file2.ts"]
-      },
-      "_files": ["root-file.ts"]
+  "backend": {
+    "_files": ["server.js", "package.json"],
+    "controllers": {
+      "_files": ["authController.js", "productController.js"]
+    }
+  },
+  "frontend": {
+    "_files": ["package.json"],
+    "src": {
+      "folderName": {
+        "subFolder": {
+          "_files": ["file1.ts", "file2.ts"]
+        },
+        "_files": ["root-file.ts"]
+      }
     }
   }
 }

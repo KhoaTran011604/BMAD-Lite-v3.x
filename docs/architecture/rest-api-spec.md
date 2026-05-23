@@ -1,5 +1,7 @@
 # REST API Spec
 
+> [SCANNED — needs review] Endpoints detected from Next.js serverless API routes
+
 ## API Style
 REST API
 

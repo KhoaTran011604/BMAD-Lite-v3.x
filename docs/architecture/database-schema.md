@@ -1,5 +1,7 @@
 # Database Schema
 
+> [SCANNED — needs review] Inferred from model/schema definitions
+
 ## Tables/Collections
 
 ### materials

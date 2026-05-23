@@ -1,5 +1,7 @@
 # Source Tree
 
+> [SCANNED — needs review] Folder-level overview only. For exact file paths, see [`source-tree.json`](./source-tree.json).
+
 ```
 project-root/
 ├── .bmad-lite/          # BMAD-Lite configurations and guidelines

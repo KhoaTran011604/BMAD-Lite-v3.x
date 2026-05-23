@@ -1,52 +1,188 @@
 {
-  "files": [
-    "package.json",
-    "tsconfig.json",
-    "next.config.js",
-    "docs/stories/4.1.live-stock-on-hand-view.md",
-    "docs/stories/4.2.low-stock-and-expiration-alerts.md",
-    "docs/prd/epic-5-code-quality-and-formatting-refactor.md",
-    "docs/stories/5.1.clean-backend-queries.md",
-    "docs/stories/5.2.shared-formatting-utilities.md",
-    "docs/stories/5.3.right-aligned-numeric-table-columns.md",
-    "src/lib/dbConnect.ts",
-    "src/lib/query-keys.ts",
-    "src/lib/utils.ts",
-    "src/models/Material.ts",
-    "src/models/Import.ts",
-    "src/models/Export.ts",
-    "src/hooks/use-dashboard-queries.ts",
-    "src/hooks/use-materials-queries.ts",
-    "src/hooks/use-materials-mutations.ts",
-    "src/hooks/use-imports-queries.ts",
-    "src/hooks/use-imports-mutations.ts",
-    "src/hooks/use-exports-queries.ts",
-    "src/hooks/use-exports-mutations.ts",
-    "src/app/layout.tsx",
-    "src/app/page.tsx",
-    "src/app/catalog/page.tsx",
-    "src/app/history/page.tsx",
-    "src/app/api/materials/route.ts",
-    "src/app/api/materials/[id]/route.ts",
-    "src/app/api/imports/route.ts",
-    "src/app/api/exports/route.ts",
-    "src/components/Sidebar.tsx",
-    "src/components/QuickActionDrawer.tsx",
-    "src/components/FormError.tsx",
-    "src/components/FormFieldItem.tsx",
-    "src/components/GenericForm.tsx",
-    "src/components/GenericTable.tsx",
-    "src/styles/globals.css",
-    "src/styles/layout.css",
-    "src/styles/glass.css",
-    "tests/unit/architecture.test.ts",
-    "tests/unit/utils.test.ts",
-    "tests/unit/models/Material.test.ts",
-    "tests/unit/models/Import.test.ts",
-    "tests/unit/models/Export.test.ts",
-    "tests/integration/api/materials.test.ts",
-    "tests/integration/api/materials.[id].test.ts",
-    "tests/integration/api/imports.test.ts",
-    "tests/integration/api/exports.test.ts"
-  ]
+  "backend": {
+    "_files": ["server.js", "package.json", "package-lock.json", "README.md"],
+    "controllers": {
+      "_files": [
+        "authController.js",
+        "BaseResponse.js",
+        "cartController.js",
+        "categoryController.js",
+        "orderController.js",
+        "productController.js",
+        "Proxy.js",
+        "reviewController.js",
+        "todoController.js",
+        "uploadCloudinaryController.js",
+        "userController.js"
+      ]
+    },
+    "middleware": {
+      "_files": ["middleware.js"],
+      "tmp": {
+        "_files": [
+          "uploadCloudinaryMiddleware.js",
+          "uploadExcelFileMiddleware.js",
+          "uploadMiddleware.js"
+        ]
+      }
+    },
+    "models": {
+      "_files": [
+        "cartModel.js",
+        "categoryModel.js",
+        "orderModel.js",
+        "productModel.js",
+        "reviewModel.js",
+        "todoModel.js",
+        "userModel.js"
+      ]
+    },
+    "routers": {
+      "_files": [
+        "authRouter.js",
+        "cartRouter.js",
+        "categoryRouter.js",
+        "orderRouter.js",
+        "productRouter.js",
+        "reviewRouter.js",
+        "todoRouter.js",
+        "uploadCloudinaryRoter.js",
+        "userRouter.js"
+      ]
+    },
+    "uploads": {
+      "_files": "[QUICK-SCAN] uploaded files storage"
+    }
+  },
+  "frontend": {
+    "_files": ["package.json", "tsconfig.json"],
+    "src": {
+      "api": {
+        "_files": [
+          "authService.ts",
+          "BaseResponse.ts",
+          "categoryService.ts",
+          "orderService.ts",
+          "productService.ts",
+          "Proxy.ts",
+          "todoService.ts",
+          "userService.ts"
+        ]
+      },
+      "app": {
+        "_files": ["layout.tsx", "layout copy.tsx", "page.tsx", "providers.tsx"],
+        "auth": {
+          "sign-in": { "_files": "[QUICK-SCAN] sign-in page" },
+          "sign-up": { "_files": "[QUICK-SCAN] sign-up page" }
+        },
+        "categories": { "_files": "[QUICK-SCAN] categories page" },
+        "orders": {
+          "_files": ["page.tsx"],
+          "[id]": { "_files": ["page.tsx"] },
+          "create": { "_files": ["page.tsx"] },
+          "edit": {
+            "[id]": { "_files": ["page.tsx"] }
+          }
+        },
+        "products": {
+          "_files": "[QUICK-SCAN] products page",
+          "[id]": { "_files": "[QUICK-SCAN] product detail page" }
+        },
+        "table-tasks": { "_files": "[QUICK-SCAN] basic task table page" },
+        "tanstack-table-tasks": { "_files": "[QUICK-SCAN] tanstack table tasks page" }
+      },
+      "assets": {
+        "logos": { "_files": "[QUICK-SCAN] logo assets" },
+        "lottiefiles": { "_files": "[QUICK-SCAN] lottie animation assets" }
+      },
+      "components": {
+        "_files": [
+          "data-table.tsx",
+          "default-header.tsx",
+          "FormWrapper.tsx",
+          "HelloWorld.tsx",
+          "HyperFormWrapper.tsx",
+          "HyperTodoTable.tsx",
+          "HyperTodoTable_v2.tsx",
+          "ItemTask.tsx",
+          "logo.tsx",
+          "Modal.tsx",
+          "Navbar.tsx",
+          "TodoTable.tsx"
+        ],
+        "Auth": {
+          "Signin": { "_files": "[QUICK-SCAN] sign-in component" },
+          "Signup": { "_files": "[QUICK-SCAN] sign-up component" }
+        },
+        "Breadcrumbs": { "_files": "[QUICK-SCAN] breadcrumb component" },
+        "common": { "_files": "[QUICK-SCAN] common components" },
+        "Layouts": {
+          "header": { "_files": "[QUICK-SCAN] header layout" },
+          "sidebar": { "_files": "[QUICK-SCAN] sidebar layout" }
+        },
+        "lotties": { "_files": "[QUICK-SCAN] lottie wrapper components" },
+        "Tables": {
+          "top-channels": { "_files": "[QUICK-SCAN] top channels table" },
+          "top-products": { "_files": "[QUICK-SCAN] top products table" }
+        },
+        "ui": {
+          "_files": [
+            "button.tsx",
+            "checkbox.tsx",
+            "context-menu.tsx",
+            "dropdown.tsx",
+            "dropdown-menu.tsx",
+            "skeleton.tsx",
+            "table.tsx"
+          ],
+          "panigation": { "_files": "[QUICK-SCAN] pagination component" }
+        }
+      },
+      "context": {
+        "_files": ["auth.tsx", "main.tsx", "store.tsx", "theme.tsx"]
+      },
+      "css": { "_files": "[QUICK-SCAN] global styles" },
+      "enum": { "_files": ["productEnum.ts"] },
+      "fonts": { "_files": "[QUICK-SCAN] custom fonts" },
+      "hooks": {
+        "_files": [
+          "use-click-outside.ts",
+          "useLocalStore.ts",
+          "use-mobile.ts",
+          "useOrders.ts",
+          "useTheme.ts"
+        ]
+      },
+      "lib": {
+        "_files": ["api.ts", "crypto.ts", "format-number.ts"]
+      },
+      "shemas": {
+        "_files": [
+          "categorySchema.ts",
+          "loginSchema.ts",
+          "orderSchema.ts",
+          "productSchema.ts",
+          "registerSchema.ts"
+        ]
+      },
+      "styles": {
+        "components": {
+          "ui": { "_files": "[QUICK-SCAN] UI component styles" }
+        },
+        "lib": { "_files": "[QUICK-SCAN] library styles" }
+      },
+      "types": {
+        "_files": ["MainType.tsx", "orderTypes.ts", "set-state-action-type.ts"]
+      },
+      "zustand": {
+        "_files": ["store.ts"]
+      }
+    }
+  },
+  "docs": {
+    "_files": "[QUICK-SCAN] BMad-Lite documentation"
+  },
+  ".bmad-lite": {
+    "_files": "[QUICK-SCAN] BMad-Lite config & agents"
+  }
 }

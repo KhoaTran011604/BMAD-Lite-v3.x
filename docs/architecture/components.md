@@ -1,5 +1,7 @@
 # Components
 
+> [SCANNED — needs review] Component names from file structure
+
 ## LiveDashboardUI
 **Responsibility:** Displays real-time summary statistics, near-expiry warning lists, and low-stock alerts.
 **Key Interfaces:** Interacts with the browser DOM, fetches and displays KPI counts.

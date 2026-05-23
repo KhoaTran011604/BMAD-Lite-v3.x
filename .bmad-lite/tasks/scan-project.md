@@ -153,23 +153,34 @@ For large folders (>6 files), summarize as `"[SCANNED] ~N {type} files"`.
 
 ```json
 {
-  "src": {
-    "app": {
-      "(auth)": {
-        "login": { "_files": ["page.tsx"] },
-        "_files": ["layout.tsx"]
-      }
+  "backend": {
+    "_files": ["server.js", "package.json"],
+    "controllers": {
+      "_files": ["authController.js", "productController.js"]
     },
-    "components": {
-      "forms": { "_files": ["[SCANNED] ~16 form files"] },
-      "ui": { "_files": ["[SCANNED] ~25 shadcn/ui primitives"] }
-    },
-    "lib": {
-      "db": {
-        "models": { "_files": ["asset.model.ts", "user.model.ts", "..."] },
-        "_files": ["connection.ts"]
+    "models": {
+      "_files": ["productModel.js", "userModel.js"]
+    }
+  },
+  "frontend": {
+    "_files": ["package.json", "tsconfig.json"],
+    "src": {
+      "app": {
+        "_files": ["layout.tsx", "page.tsx"],
+        "auth": {
+          "sign-in": { "_files": "[QUICK-SCAN] sign-in page" }
+        }
+      },
+      "components": {
+        "_files": ["Navbar.tsx"],
+        "ui": {
+          "_files": ["button.tsx"]
+        }
       }
     }
+  },
+  "docs": {
+    "_files": "[QUICK-SCAN] BMad-Lite documentation"
   }
 }
 ```

@@ -1,5 +1,7 @@
 # Coding Standards
 
+> [SCANNED — needs review] Inferred from ESLint, Prettier, TypeScript config
+
 ## Core Standards
 - **Languages & Runtimes:** TypeScript 5.3.x, Node.js 20.x
 - **Style & Linting:** ESLint + Prettier rules
@@ -26,4 +28,3 @@
 - **Rule 9 (Absolute Ban on N+1 Queries):** DB querying inside loops is strictly prohibited. For relational or referenced data retrieval, developers must leverage Mongoose `.populate()`, MongoDB aggregation pipelines (`$lookup`), or bulk queries via `$in`.
 - **Rule 10 (Numeric Table Alignment):** All table columns representing numerical, quantity, currency, or unit data must align both their header titles and cell values to the right. Dynamic cells must output raw numeric values only, and UOM or currency symbols must be declared inside the column header.
 - **Rule 11 (Unified Formatting Utility):** Creating local formatting utilities or closures is strictly prohibited. All components, hooks, and API routes must import date, time, and currency formatters from a centralized utility provider (`src/lib/utils.ts`).
-

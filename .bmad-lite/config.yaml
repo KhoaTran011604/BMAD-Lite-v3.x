@@ -10,14 +10,14 @@ project:
 
 # Document Locations
 documents:
-  prd: docs/prd.md
-  architecture: docs/architecture.md
+  prd: docs/prd/index.md
+  architecture: docs/architecture/index.md
   epics_folder: docs/epics/
 
 # Task Tracking
 tracking:
   location: docs/
-  progress_file: progress.md
+  progress_file: progress/index.md
   story_location: stories/
   story_pattern: "{epic}.{story}.{short-title}.md"  # e.g., 1.1.auth-setup.md, 1.2.login-form.md
 
@@ -37,14 +37,11 @@ agents:
     templates:
       - story.yaml
     dev_context_files:  # Always load these for dev context
-      - docs/module-graph.md               # READ FIRST - module relationships (if sharded/exists)
-      - docs/architecture.md#tech-stack     # SINGLE SOURCE OF TRUTH (monolith)
-      - docs/architecture/tech-stack.md    # SINGLE SOURCE OF TRUTH (sharded)
-      - docs/architecture.md#source-tree    # Folder-level overview (monolith)
-      - docs/architecture/source-tree.md   # Folder-level overview (sharded)
-      - docs/architecture/source-tree.json # Exact file paths (if sharded)
-      - docs/architecture.md#coding-standards # Coding standards (monolith)
-      - docs/architecture/coding-standards.md # Coding standards (sharded)
+      - docs/module-graph.md
+      - docs/architecture/tech-stack.md
+      - docs/architecture/source-tree.md
+      - docs/architecture/source-tree.json
+      - docs/architecture/coding-standards.md
 
   reviewer:
     file: .bmad-lite/agents/reviewer.md
@@ -107,7 +104,7 @@ output:
   format: markdown
 
   # Monolith output mode by default for Greenfield. Converts to sharded via *vert-to-v3
-  mode: monolith
+  mode: sharded
 
   # Max lines per file before splitting further
   max_lines_per_file: 200

@@ -1,5 +1,7 @@
 # Data Models
 
+> [SCANNED — needs review] Surface-level extraction — field declarations only
+
 ## Material
 **Purpose:** Represents a registered inventory item (seeds, fertilizer, tool, etc.) that can be receipted or disbursed.
 

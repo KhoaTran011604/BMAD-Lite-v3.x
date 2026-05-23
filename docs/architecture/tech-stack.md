@@ -1,5 +1,7 @@
 # Tech Stack
 
+> [SCANNED — needs review] SINGLE SOURCE OF TRUTH — auto-detected from package.json
+
 ## Cloud Infrastructure
 - **Provider:** Vercel (Frontend & Serverless API Routes) + MongoDB Atlas (Database)
 - **Key Services:** Next.js Serverless Functions, MongoDB Atlas Serverless (Shared tier)
