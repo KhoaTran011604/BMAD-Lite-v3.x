@@ -1,0 +1,165 @@
+/* Glassmorphic Panel Styles */
+.glass-panel {
+  background: rgba(20, 20, 23, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius);
+  transition: var(--transition-smooth);
+}
+
+.glass-panel:hover {
+  background: rgba(20, 20, 23, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Premium Card Panels */
+.glass-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.2), transparent);
+  opacity: 0;
+  transition: var(--transition-smooth);
+}
+
+.glass-card:hover::before {
+  opacity: 1;
+}
+
+/* Glowing Accent Panels */
+.glass-glow-primary {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.05);
+}
+
+.glass-glow-warning {
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.05);
+}
+
+.glass-glow-danger {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.05);
+}
+
+/* Glassmorphic Buttons */
+.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.glass-btn:active {
+  transform: translateY(0);
+}
+
+.glass-btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+}
+
+.glass-btn-primary:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Glassmorphic Form Inputs */
+.glass-input {
+  background: rgba(24, 24, 27, 0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  width: 100%;
+  transition: var(--transition-smooth);
+  color: var(--foreground);
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(24, 24, 27, 0.8);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.glass-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Glassmorphic Badges */
+.glass-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.glass-badge-muted {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted-foreground);
+  border-color: rgba(255, 255, 255, 0.03);
+}
+
+.glass-badge-primary {
+  background: var(--primary-glow);
+  color: #a7f3d0;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.glass-badge-warning {
+  background: var(--warning-glow);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.05);
+  animation: pulse-ambient 2s infinite ease-in-out;
+}
+
+.glass-badge-danger {
+  background: var(--danger-glow);
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.2);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.05);
+}
+
+@keyframes pulse-ambient {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.05);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+  }
+}

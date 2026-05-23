@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --font-sans: 'Outfit', sans-serif;
+
+  /* Premium Dark Theme Color Tokens */
+  --background: #09090b;
+  --foreground: #fafafa;
+  
+  --card: #141417;
+  --card-foreground: #fafafa;
+  --card-border: #27272a;
+  --card-hover-border: #3f3f46;
+
+  --popover: #09090b;
+  --popover-foreground: #fafafa;
+
+  /* Farming/Agricultural Theme Accent (Emerald & Mint Glow) */
+  --primary: #10b981;
+  --primary-glow: rgba(16, 185, 129, 0.15);
+  --primary-foreground: #fafafa;
+  
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+
+  /* Warning and Status Badges */
+  --warning: #f59e0b;
+  --warning-glow: rgba(245, 158, 11, 0.2);
+  --warning-foreground: #fffbeb;
+  
+  --danger: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.2);
+  --danger-foreground: #fef2f2;
+
+  --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.2);
+  --success-foreground: #ecfdf5;
+
+  --border: #27272a;
+  --input: #18181b;
+  --ring: #10b981;
+
+  --radius: 12px;
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Custom Scrollbar for Premium Feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--card-hover-border);
+}
+
+/* Skeleton Loading Animation and Row Hover Styling */
+@keyframes skeleton-loading-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeleton-loading-pulse 1.5s infinite ease-in-out;
+}
+
+.catalog-row {
+  transition: var(--transition-smooth);
+}
+
+.catalog-row:hover {
+  background-color: rgba(255, 255, 255, 0.015);
+}
+

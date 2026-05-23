@@ -1,0 +1,28 @@
+{
+  "files": [
+    "package.json",
+    "tsconfig.json",
+    "next.config.js",
+    "src/lib/dbConnect.ts",
+    "src/lib/utils.ts",
+    "src/models/Material.ts",
+    "src/models/Import.ts",
+    "src/models/Export.ts",
+    "src/app/layout.tsx",
+    "src/app/page.tsx",
+    "src/app/catalog/page.tsx",
+    "src/app/history/page.tsx",
+    "src/app/api/materials/route.ts",
+    "src/app/api/materials/[id]/route.ts",
+    "src/app/api/imports/route.ts",
+    "src/app/api/exports/route.ts",
+    "src/components/Sidebar.tsx",
+    "src/components/QuickActionDrawer.tsx",
+    "src/styles/globals.css",
+    "src/styles/layout.css",
+    "src/styles/glass.css",
+    "tests/unit/models/Material.test.ts",
+    "tests/integration/api/materials.test.ts",
+    "tests/integration/api/materials.[id].test.ts"
+  ]
+}
