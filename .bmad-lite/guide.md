@@ -78,7 +78,7 @@ PLAN → EXECUTE → REVIEW → REPEAT
 ```
 
 **Output:**
-- ✅ `docs/stories/1.1.md` - Story file
+- ✅ `docs/stories/1.1.project-setup.md` - Story file
 - ✅ `src/` - Working code
 - ✅ Tests passing
 
@@ -255,7 +255,7 @@ ls docs/architecture.md
 
 #### Story stuck in wrong status
 
-1. Open story file: `docs/stories/1.1.md`
+1. Open story file: `docs/stories/1.1.{short-title}.md`
 2. Change `**Status:**` line manually
 3. Save and continue
 
@@ -340,7 +340,7 @@ Draft → Approved → InProgress → Review → Done
 - **Who uses it**: Planner creates, Executor follows
 - **Critical sections**: Tech Stack, Source Tree, Coding Standards
 
-### Story (docs/stories/X.X.md)
+### Story (docs/stories/X.X.{short-title}.md)
 - **Implementation plan**: Tasks, AC, dev notes
 - **Who uses it**: Executor creates and implements
 - **Status flow**: Draft → Approved → InProgress → Review → Done

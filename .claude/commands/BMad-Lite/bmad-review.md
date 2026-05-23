@@ -24,6 +24,7 @@ Load and activate the Reviewer agent:
 1. Read `.bmad-lite/agents/reviewer.md`
 2. Follow activation instructions in the agent file
 3. Load `.bmad-lite/config.yaml` for project settings
+4. **CRITICAL: Ensure ALL review logs, comments, and story updates are in English.**
 
 ---
 
@@ -77,7 +78,7 @@ When the Reviewer decides **PASS**, the following updates happen automatically (
 ```
 PASS Decision
 │
-├── 1. UPDATE STORY FILE (docs/stories/{epic}.{story}.md)
+├── 1. UPDATE STORY FILE (docs/stories/{epic}.{story}.{short-title}.md)
 │   └── Set status: Done
 │   └── Add Review Results section (date, decision, notes)
 │
@@ -127,7 +128,7 @@ TEST COVERAGE: 64 tests (unit + integration)
 DECISION: PASS ✓
 
 Auto-updating docs...
-  ✓ docs/stories/3.3.md — status set to Done, review results added
+  ✓ docs/stories/3.3.bank-account-management.md — status set to Done, review results added
   ✓ docs/progress/changelog.md — appended: "Done: Bank Account Management - 64 tests, pre-save hook (Reviewed: PASS)"
   ✓ docs/progress/epic-1-to-7.md — story 3.3 marked ✅ Done
   ✓ docs/progress/index.md — counts verified (no change needed)

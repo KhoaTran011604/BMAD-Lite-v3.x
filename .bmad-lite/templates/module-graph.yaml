@@ -85,11 +85,11 @@ structure:
       ### {Domain Name}
       | Module | Key Files | Related Stories |
       |--------|-----------|-----------------|
-      | {Module Name} | `{path1}`, `{path2}` | [{epic}.{story}](stories/{epic}.{story}.md) |
+      | {Module Name} | `{path1}`, `{path2}` | [{epic}.{story}](stories/{epic}.{story}.{short-title}.md) |
 
       RULES:
       - Key Files: relative paths to primary files (service, route, component, model)
-      - Related Stories: link format `[{id}](stories/{id}.md)` — comma separated
+      - Related Stories: link format `[{id}](stories/{id}.{short-title}.md)` — comma separated
       - If no stories exist yet (greenfield): use `[TODO]` placeholder
       - Order: match the subgraph order from the diagram
       - Derived from: architecture source-tree, rest-api-spec + PRD epic-list
@@ -104,7 +104,7 @@ structure:
       ### Shared / Cross-cutting
       | Module | Key Files | Related Stories |
       |--------|-----------|-----------------|
-      | {SharedModule} | `{path}` | [{id}](stories/{id}.md) |
+      | {SharedModule} | `{path}` | [{id}](stories/{id}.{short-title}.md) |
 
       Include: shared components, utility libraries, query key registries,
       generic form/table wrappers, common hooks, etc.

@@ -6,7 +6,7 @@ template:
   version: 1.0
   output:
     format: markdown
-    filename: docs/stories/{epic}.{story}.md
+    filename: docs/stories/{epic}.{story}.{short-title}.md
     title: "Story {epic}.{story}: {title}"
 
 # ============================================================================
@@ -125,7 +125,7 @@ sections:
 
       ### Previous Story Insights
       {If applicable, key learnings from previous story}
-      [Source: docs/stories/{prev}.md#dev-record]
+      [Source: docs/stories/{prev}.{short-title}.md#dev-record]
 
   # --------------------------------------------------------------------------
   # Suggested Skills

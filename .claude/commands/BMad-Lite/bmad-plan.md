@@ -35,6 +35,7 @@ Load and activate the Planner agent:
 1. Read `.bmad-lite/agents/planner.md`
 2. Follow activation instructions in the agent file
 3. Load `.bmad-lite/config.yaml` for project settings
+4. **CRITICAL: Ensure ALL output files, epics, stories, and comments are generated in English.**
 
 ---
 

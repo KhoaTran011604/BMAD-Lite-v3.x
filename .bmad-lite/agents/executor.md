@@ -351,7 +351,7 @@ import Image from 'next/image';
 
 ```yaml
 template: templates/story.yaml
-output: docs/stories/{epic}.{story}.md
+output: docs/stories/{epic}.{story}.{short-title}.md
 approach:
   1. Identify next sequential story (check docs/stories/ for existing)
   2. Read epic file or PRD epic section
@@ -478,7 +478,7 @@ Planned file locations (verified against Source Tree):
 ✓ src/components/forms/LoginForm.tsx
 ✓ src/queries/auth/mutations.ts
 
-[Creates docs/stories/1.3.md with:]
+[Creates docs/stories/1.3.user-authentication.md with:]
 - Story statement (Gherkin format)
 - Acceptance Criteria (from PRD)
 - Tasks with AC references

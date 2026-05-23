@@ -71,7 +71,7 @@ commands:
 **COMPREHENSIVE REVIEW PROCESS:**
 
 #### Step 1: Load Context
-- Read story file (`docs/stories/{epic}.{story}.md`)
+- Read story file (`docs/stories/{epic}.{story}.{short-title}.md`)
 - Read relevant architecture sections
 - Check implementation files (from File List in story)
 
@@ -106,7 +106,7 @@ For each AC:
 
 **When decision is PASS, automatically perform ALL of the following updates:**
 
-**6a. Update Story File** (`docs/stories/{epic}.{story}.md`)
+**6a. Update Story File** (`docs/stories/{epic}.{story}.{short-title}.md`)
 - Set status to `Done`
 - Add or update Review Results section:
 ```markdown
@@ -161,7 +161,7 @@ For each AC:
 After all updates, report:
 ```
 Auto-updating docs...
-  ✓ docs/stories/{id}.md — status: Done, review results added
+  ✓ docs/stories/{id}.{short-title}.md — status: Done, review results added
   ✓ docs/progress/changelog.md — appended entry
   ✓ docs/progress/epic-{range}.md — story marked Done
   ✓ docs/progress/index.md — counts updated
@@ -229,7 +229,7 @@ TEST COVERAGE: 64 tests (unit + integration)
 DECISION: PASS ✓
 
 Auto-updating docs...
-  ✓ docs/stories/3.3.md — status: Done, review results added
+  ✓ docs/stories/3.3.bank-account-management.md — status: Done, review results added
   ✓ docs/progress/changelog.md — appended: "Done: Bank Account Management - 64 tests, pre-save hook (Reviewed: PASS)"
   ✓ docs/progress/epic-1-to-7.md — story 3.3 marked ✅ Done
   ✓ docs/progress/index.md — counts verified
@@ -252,7 +252,7 @@ Quick Review - Story 1.4: Profile Update
 DECISION: PASS ✓
 
 Auto-updating docs...
-  ✓ docs/stories/1.4.md — status: Done
+  ✓ docs/stories/1.4.profile-update.md — status: Done
   ✓ docs/progress/changelog.md — appended entry
   ✓ docs/progress/epic-1-to-7.md — story 1.4 marked Done
   ✓ docs/progress/index.md — counts updated
@@ -282,7 +282,7 @@ Issues noted in story file. Fix and re-review, or user can manually approve.
 
 ## File Resolution
 
-- Story files: `docs/stories/{epic}.{story}.md`
+- Story files: `docs/stories/{epic}.{story}.{short-title}.md`
 - Architecture: `docs/architecture/` (sharded)
 - Progress index: `docs/progress/index.md`
 - Progress details: `docs/progress/epic-{range}.md`

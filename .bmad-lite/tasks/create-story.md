@@ -75,7 +75,7 @@ docs/stories/ is empty?
    - Coding Standards (key rules)
    - Test Strategy (testing requirements)
 
-3. If previous story exists (docs/stories/{prev}.md):
+3. If previous story exists (docs/stories/{prev}.{short-title}.md):
    - Read Dev Record section
    - Extract key learnings/insights
 ```
@@ -124,7 +124,7 @@ docs/stories/ is empty?
 
 ### Step 6: Create Story File
 
-**File location:** `docs/stories/{epic}.{story}.md`
+**File location:** `docs/stories/{epic}.{story}.{short-title}.md`
 
 **Use template:** `.bmad-lite/templates/story.yaml`
 
@@ -235,7 +235,7 @@ Quick validation checklist:
 Output story file location and summary:
 
 Story {epic}.{story}: {title}
-Location: docs/stories/{epic}.{story}.md
+Location: docs/stories/{epic}.{story}.{short-title}.md
 Status: Draft
 
 Summary:

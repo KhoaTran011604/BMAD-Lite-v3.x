@@ -78,7 +78,7 @@ execution:
   steps:
     - id: draft-story
       action: draft-story
-      creates: docs/stories/{epic}.{story}.md
+      creates: docs/stories/{epic}.{story}.{short-title}.md
       template: templates/story.yaml
       task: tasks/create-story.md
       description: |
@@ -103,7 +103,7 @@ execution:
 
     - id: implement
       action: develop
-      updates: docs/stories/{epic}.{story}.md
+      updates: docs/stories/{epic}.{story}.{short-title}.md
       description: |
         Implement story tasks.
         USE SKILLS as appropriate:
@@ -136,7 +136,7 @@ review:
   steps:
     - id: review-story
       action: review-story
-      updates: docs/stories/{epic}.{story}.md
+      updates: docs/stories/{epic}.{story}.{short-title}.md
       description: |
         Comprehensive story review.
         Decision: PASS / CONCERNS / FAIL

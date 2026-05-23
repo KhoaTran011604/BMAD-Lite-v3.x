@@ -293,7 +293,7 @@ All docs generated. Review files tagged [QUICK-SCAN] for accuracy.
 
 - Tasks: `.bmad-lite/tasks/{name}.md` (quick-scan, scan-project, gen-arch, gen-prd, gen-progress)
 - Templates: `.bmad-lite/templates/{name}.yaml` (architecture, prd, progress)
-- Story files: `docs/stories/{epic}.{story}.md`
+- Story files: `docs/stories/{epic}.{story}.{short-title}.md`
 - Architecture output: `docs/architecture/`
 - PRD output: `docs/prd/`
 - Progress output: `docs/progress/`

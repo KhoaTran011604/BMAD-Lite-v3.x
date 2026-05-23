@@ -19,7 +19,7 @@ tracking:
   location: docs/
   progress_file: progress.md
   story_location: stories/
-  story_pattern: "{epic}.{story}.md"  # e.g., 1.1.md, 1.2.md
+  story_pattern: "{epic}.{story}.{short-title}.md"  # e.g., 1.1.auth-setup.md, 1.2.login-form.md
 
 # Agent Configuration
 agents:

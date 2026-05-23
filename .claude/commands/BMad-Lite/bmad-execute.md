@@ -29,6 +29,7 @@ Load and activate the Executor agent:
 2. Follow activation instructions in the agent file
 3. Load `.bmad-lite/config.yaml` for project settings
 4. **CRITICAL: Load ALL architecture context files**
+5. **CRITICAL: Ensure ALL generated code, comments, commits, and story documents are in English.**
 
 ---
 
