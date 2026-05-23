@@ -9,6 +9,9 @@ project-root/
 │   └── stories/         # Drafted implementation-ready story documents
 │       └── 4.1.live-stock-on-hand-view.md
 │       └── 4.2.low-stock-and-expiration-alerts.md
+│       └── 5.1.clean-backend-queries.md
+│       └── 5.2.shared-formatting-utilities.md
+│       └── 5.3.right-aligned-numeric-table-columns.md
 ├── src/
 │   ├── app/             # Next.js App Router
 │   │   ├── layout.tsx   # Global styling and Outfit font injection

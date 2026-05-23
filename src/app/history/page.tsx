@@ -8,7 +8,7 @@ import { useExportsQuery } from '@/hooks/use-exports-queries';
 import type { IImport } from '@/hooks/use-imports-queries';
 import type { IExport } from '@/hooks/use-exports-queries';
 
-import { filterExportHistory, filterImportHistory, sortByDateDesc } from '@/lib/utils';
+import { filterExportHistory, filterImportHistory, sortByDateDesc, formatDateTime, formatCurrency } from '@/lib/utils';
 import { GenericTable } from '@/components/GenericTable';
 
 type MaterialType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Tools';
@@ -41,17 +41,6 @@ type IHistorySelection =
       type: 'exports';
       record: IExport;
     };
-
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return Number.isNaN(date.getTime()) ? dateString : date.toISOString().split('T')[0];
-};
-
-const formatCurrency = (amount: number): string =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
 
 const getMaterialTypeLabel = (materialType?: MaterialType): string => {
   if (!materialType) {
@@ -160,7 +149,7 @@ export default function HistoryPage() {
         header: 'Date',
         cell: ({ row }) => (
           <span style={{ color: 'var(--muted-foreground)' }}>
-            {formatDate(row.original.date)}
+            {formatDateTime(row.original.date)}
           </span>
         ),
       },
@@ -183,35 +172,28 @@ export default function HistoryPage() {
       },
       {
         accessorKey: 'quantity',
-        header: 'Quantity',
+        header: 'Quantity (Unit)',
+        meta: { align: 'right' },
         cell: ({ row }) => (
           <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
             +{row.original.quantity}
-            <span
-              style={{
-                marginLeft: '0.25rem',
-                fontSize: '0.8rem',
-                fontWeight: 400,
-                color: 'var(--muted-foreground)',
-              }}
-            >
-              {row.original.materialId?.uom}
-            </span>
           </span>
         ),
       },
       {
         accessorKey: 'unitPrice',
-        header: 'Unit Price',
+        header: 'Unit Price ($)',
+        meta: { align: 'right' },
         cell: ({ row }) => <span>{formatCurrency(row.original.unitPrice)}</span>,
       },
       {
         id: 'totalCost',
-        header: () => <div style={{ textAlign: 'right' }}>Total Cost</div>,
+        header: 'Total Cost ($)',
+        meta: { align: 'right' },
         cell: ({ row }) => (
-          <div style={{ textAlign: 'right', color: '#fff', fontWeight: 700 }}>
+          <span style={{ color: '#fff', fontWeight: 700 }}>
             {formatCurrency(row.original.quantity * row.original.unitPrice)}
-          </div>
+          </span>
         ),
       },
     ],
@@ -226,7 +208,7 @@ export default function HistoryPage() {
         header: 'Date',
         cell: ({ row }) => (
           <span style={{ color: 'var(--muted-foreground)' }}>
-            {formatDate(row.original.date)}
+            {formatDateTime(row.original.date)}
           </span>
         ),
       },
@@ -256,20 +238,11 @@ export default function HistoryPage() {
       },
       {
         accessorKey: 'quantity',
-        header: 'Quantity',
+        header: 'Quantity (Unit)',
+        meta: { align: 'right' },
         cell: ({ row }) => (
           <span style={{ fontWeight: 800, color: '#fca5a5' }}>
             -{row.original.quantity}
-            <span
-              style={{
-                marginLeft: '0.25rem',
-                fontSize: '0.8rem',
-                fontWeight: 400,
-                color: 'var(--muted-foreground)',
-              }}
-            >
-              {row.original.materialId?.uom}
-            </span>
           </span>
         ),
       },
@@ -512,7 +485,7 @@ export default function HistoryPage() {
                     TRANSACTION DATE
                   </span>
                   <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff' }}>
-                    {formatDate(selection.record.date)}
+                    {formatDateTime(selection.record.date)}
                   </span>
                 </div>
               </div>
@@ -542,7 +515,7 @@ export default function HistoryPage() {
                   <div className="glass-panel" style={{ padding: '0.95rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
                     <span style={{ color: 'var(--muted-foreground)' }}>Expiration Date</span>
                     <span style={{ color: '#fff', fontWeight: 700 }}>
-                      {selection.record.expirationDate ? formatDate(selection.record.expirationDate) : 'Not provided'}
+                      {selection.record.expirationDate ? formatDateTime(selection.record.expirationDate).split(' ')[0] : 'Not provided'}
                     </span>
                   </div>
                 </div>

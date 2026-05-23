@@ -365,3 +365,33 @@ export const filterExportHistory = <
 export function cn(...classes: unknown[]) {
   return classes.filter(Boolean).join(' ');
 }
+
+/**
+ * Formats a date string or Date object into a readable date and time including minutes.
+ * E.g., "2026-05-23T17:30:00.000Z" -> "2026-05-23 17:30"
+ */
+export const formatDateTime = (dateInput: Date | string | null | undefined): string => {
+  if (!dateInput) return '';
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return String(dateInput);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+};
+
+/**
+ * Formats an amount into US numeric format with two decimal places.
+ * E.g., 1234.56 -> "1,234.56"
+ */
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+

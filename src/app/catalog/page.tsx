@@ -154,7 +154,8 @@ export default function CatalogPage() {
       },
       {
         accessorKey: 'currentStock',
-        header: 'Current Stock',
+        header: 'Current Stock (Unit)',
+        meta: { align: 'right' },
         cell: ({ row }) => {
           const material = row.original;
           const isLowStock = material.currentStock < material.safetyStock;
@@ -163,27 +164,17 @@ export default function CatalogPage() {
               <span style={{ color: isLowStock ? 'var(--warning)' : 'var(--foreground)' }}>
                 {material.currentStock}
               </span>
-              <span
-                style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--muted-foreground)',
-                  marginLeft: '0.25rem',
-                  fontWeight: 400,
-                }}
-              >
-                {material.uom}
-              </span>
             </span>
           );
         },
       },
       {
         accessorKey: 'safetyStock',
-        header: 'Safety Stock',
+        header: 'Safety Stock (Unit)',
+        meta: { align: 'right' },
         cell: ({ row }) => (
           <span style={{ color: 'var(--muted-foreground)' }}>
             {row.original.safetyStock}
-            <span style={{ fontSize: '0.8rem', marginLeft: '0.25rem' }}>{row.original.uom}</span>
           </span>
         ),
       },

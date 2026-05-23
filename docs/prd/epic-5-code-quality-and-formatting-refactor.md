@@ -1,0 +1,34 @@
+# Epic 5: Code Quality, Shared Helpers & Table Alignment Refactor
+
+**Goal:** Establish high standards for database query efficiency (completely avoiding N+1 queries), implement unified datetime and currency formatting utility helpers for codebase-wide reuse, and standardize the user interface by right-aligning numerical data columns (with unit indicators positioned in column headers).
+
+## Story 5.1: Clean BE & Database Queries (0% N+1 Queries)
+**As a** Farm Developer,
+**I want** to write highly readable, short, and performant database queries without querying inside loops (N+1 queries),
+**so that** AgriKeep remains fast, database overhead is minimized, and connection pooling is optimized.
+
+**Acceptance Criteria:**
+1. Given database read operations, When fetching related data, Then the application must use Mongoose `.populate()`, MongoDB aggregation pipelines (`$lookup`), or bulk queries via `$in` rather than executing queries inside loops (such as `.map()` or `for` loops).
+2. Given any backend schema, When writing data access queries, Then they must be short, structured, readable, and properly utilize Mongoose indexes for optimal performance.
+
+## Story 5.2: Shared Formatting Utilities
+**As a** Farm Developer,
+**I want** a centralized set of datetime and currency formatting functions under a shared utility folder,
+**so that** duplicate local formatter functions are eliminated and formatting conventions are consistent across all dashboards and logs.
+
+**Acceptance Criteria:**
+1. Given a datetime formatting helper, When provided with a Date object or ISO string, Then it must return a formatted datetime string including minutes (`YYYY-MM-DD HH:mm`) and handle empty/null inputs gracefully.
+2. Given a currency formatting helper, When provided with a numeric amount, Then it must return a US-formatted currency string (e.g. `$1,234.56` or `$0.00`).
+3. Given the dashboard or history pages, When displaying date-times or currency values, Then they must import and use the centralized formatting helpers from `src/lib/utils.ts`.
+
+## Story 5.3: Right-Aligned Table Columns for Numbers
+**As a** Warehouse Operator,
+**I want** all tables showing numbers (such as quantities, unit prices, total costs, and safety stock thresholds) to align both header titles and column values to the right, and display currency symbols/units in the headers,
+**so that** data is easily scannable and numbers align cleanly on decimal points.
+
+**Acceptance Criteria:**
+1. Given table components displaying numerical fields (current stock, safety stock, price, costs), When rendered, Then both the table headers and body cells of those columns must be styled with `text-align: right`.
+2. Given numeric columns in tables, When displaying values, Then the dynamic cells must render only the formatted numbers, and the unit indicators (e.g., UOM like `kg`/`liters` or currency like `$`) must be positioned inside the column header (e.g. `Current Stock (UOM)` or `Unit Price ($)`).
+3. Given the dynamic `GenericTable.tsx` component, When receiving a column configuration, Then it must resolve text-alignment cleanly based on TanStack Table column definitions metadata (e.g., `meta: { align: 'right' }`).
+
+---

@@ -12,4 +12,8 @@ Implement disbursement logging with strict validation checks to prevent negative
 **Epic 4: Live Inventory & Smart Alerts Dashboard**
 Build a premium, real-time analytics dashboard with proactive warning indicators for low-stock and near-expiry supplies.
 
+**Epic 5: Code Quality, Shared Helpers & Table Alignment Refactor**
+Establish backend query performance guidelines (0% N+1 queries), create centralized formatting helpers, and standardize numeric right-alignment on all tables.
+
 ---
+

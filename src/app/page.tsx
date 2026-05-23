@@ -2,36 +2,18 @@
 
 import React, { useMemo } from 'react';
 import { useDashboardSummaryQuery } from '@/hooks/use-dashboard-queries';
-import type {
-  DashboardLowStockWarning,
-  DashboardNearExpiryAlert,
-  DashboardStockItem,
-  DashboardSummary,
+import {
+  formatDateTime,
+  formatCurrency,
+  type DashboardLowStockWarning,
+  type DashboardNearExpiryAlert,
+  type DashboardStockItem,
+  type DashboardSummary,
 } from '@/lib/utils';
-
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 2,
-});
 
 const quantityFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 });
-
-const formatTransactionDate = (value: string | null): string => {
-  if (!value) {
-    return 'No activity yet';
-  }
-
-  return new Date(value).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-};
 
 const formatShortDate = (value: string): string =>
   new Date(value).toLocaleDateString('en-US', {
@@ -206,7 +188,7 @@ export default function Dashboard() {
             Total Portfolio Value
           </span>
           <strong style={{ fontSize: '2.2rem', lineHeight: 1.1, fontWeight: 800 }}>
-            {currencyFormatter.format(summary.totalPortfolioValue)}
+            {formatCurrency(summary.totalPortfolioValue)}
           </strong>
           <p style={{ color: 'var(--muted-foreground)', fontSize: '0.85rem' }}>
             Calculated as current stock on hand multiplied by the weighted average import unit price per material.
@@ -261,7 +243,7 @@ export default function Dashboard() {
                     <span className="glass-badge glass-badge-muted">{item.type}</span>
                   </div>
                   <p style={{ color: 'var(--muted-foreground)', fontSize: '0.84rem' }}>
-                    Safety stock: {quantityFormatter.format(item.safetyStock)} {item.uom} | Last movement: {formatTransactionDate(item.lastTransactionDate)}
+                    Safety stock: {quantityFormatter.format(item.safetyStock)} {item.uom} | Last movement: {formatDateTime(item.lastTransactionDate) || 'No activity yet'}
                   </p>
                 </div>
 
@@ -281,9 +263,9 @@ export default function Dashboard() {
                   <span style={{ color: 'var(--muted-foreground)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     Estimated Value
                   </span>
-                  <strong style={{ fontSize: '1.2rem', fontWeight: 800 }}>{currencyFormatter.format(item.stockValue)}</strong>
+                  <strong style={{ fontSize: '1.2rem', fontWeight: 800 }}>{formatCurrency(item.stockValue)}</strong>
                   <span style={{ color: 'var(--muted-foreground)', fontSize: '0.78rem' }}>
-                    Avg unit price {currencyFormatter.format(item.averageUnitPrice)}
+                    Avg unit price {formatCurrency(item.averageUnitPrice)}
                   </span>
                 </div>
               </article>

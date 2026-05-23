@@ -57,32 +57,51 @@ export function GenericTable<TData>({
                   letterSpacing: '0.05em',
                 }}
               >
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id} style={{ padding: '1rem' }}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const align = (header.column.columnDef.meta as any)?.align || 'left';
+                  return (
+                    <th
+                      key={header.id}
+                      style={{
+                        padding: '1rem',
+                        textAlign: align,
+                      }}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, idx) => (
               <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                {columns.map((_, colIdx) => (
-                  <td key={colIdx} style={{ padding: '1.25rem 1rem' }}>
-                    <div
-                      className="skeleton-pulse"
+                {columns.map((column, colIdx) => {
+                  const align = (column.meta as any)?.align || 'left';
+                  return (
+                    <td
+                      key={colIdx}
                       style={{
-                        height: '1.25rem',
-                        width: colIdx === 0 ? '160px' : '80px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                        borderRadius: '4px',
+                        padding: '1.25rem 1rem',
+                        textAlign: align,
                       }}
-                    ></div>
-                  </td>
-                ))}
+                    >
+                      <div
+                        className="skeleton-pulse"
+                        style={{
+                          height: '1.25rem',
+                          width: colIdx === 0 ? '160px' : '80px',
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          borderRadius: '4px',
+                          marginLeft: align === 'right' ? 'auto' : undefined,
+                        }}
+                      ></div>
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -164,31 +183,42 @@ export function GenericTable<TData>({
                 letterSpacing: '0.05em',
               }}
             >
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  style={{
-                    padding: '1rem',
-                    cursor: header.column.getCanSort() ? 'pointer' : 'default',
-                    userSelect: 'none',
-                  }}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getCanSort() && (
-                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                        {{
-                          asc: ' 🔼',
-                          desc: ' 🔽',
-                        }[header.column.getIsSorted() as string] ?? ''}
-                      </span>
-                    )}
-                  </div>
-                </th>
-              ))}
+              {headerGroup.headers.map((header) => {
+                const align = (header.column.columnDef.meta as any)?.align || 'left';
+                return (
+                  <th
+                    key={header.id}
+                    style={{
+                      padding: '1rem',
+                      cursor: header.column.getCanSort() ? 'pointer' : 'default',
+                      userSelect: 'none',
+                      textAlign: align,
+                    }}
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
+                      }}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getCanSort() && (
+                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                          {{
+                            asc: ' 🔼',
+                            desc: ' 🔽',
+                          }[header.column.getIsSorted() as string] ?? ''}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           ))}
         </thead>
@@ -226,11 +256,20 @@ export function GenericTable<TData>({
                   }
                 }}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} style={{ padding: '1.15rem 1rem' }}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const align = (cell.column.columnDef.meta as any)?.align || 'left';
+                  return (
+                    <td
+                      key={cell.id}
+                      style={{
+                        padding: '1.15rem 1rem',
+                        textAlign: align,
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
               </tr>
             ))
           )}
