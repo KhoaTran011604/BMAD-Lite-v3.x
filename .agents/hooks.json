@@ -1,0 +1,7 @@
+{
+  "doc-sync-reminder": {
+    "on": "after-tool-execution",
+    "command": "echo \"`n[Doc Sync Reminder] If this change creates new CODE files -> MUST update source-tree.json (skip assets/non-code). If affects data models, API endpoints, dependencies -> update corresponding docs/architecture/ files.`n\"",
+    "enabled": true
+  }
+}
