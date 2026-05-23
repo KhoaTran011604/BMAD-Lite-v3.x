@@ -1,59 +1,46 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/utils';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import type { ColumnDef } from '@tanstack/react-table';
 
-// Standard TypeScript definitions decoupled from serverless Mongoose modules
-export type MaterialType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Tools';
+import { useMaterialsQuery } from '@/hooks/use-materials-queries';
+import {
+  useCreateMaterialMutation,
+  useUpdateMaterialMutation,
+} from '@/hooks/use-materials-mutations';
+import type { IMaterial } from '@/hooks/use-materials-queries';
 
-export interface IMaterial {
-  _id: string;
-  name: string;
-  type: MaterialType;
-  uom: string;
-  safetyStock: number;
-  currentStock: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { GenericTable } from '@/components/GenericTable';
+import { GenericForm } from '@/components/GenericForm';
+import { FormFieldItem } from '@/components/FormFieldItem';
 
-export interface IApiResponse<T> {
-  data: T;
-  meta?: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-}
-
-// Zod validation schema for creating/updating a material
 const MaterialFormSchema = z.object({
-  name: z.string({ required_error: 'Material name is required' }).trim().min(1, 'Material name cannot be empty'),
+  name: z
+    .string({ required_error: 'Material name is required' })
+    .trim()
+    .min(1, 'Material name cannot be empty'),
   type: z.enum(['Seeds', 'Fertilizers', 'Pesticides', 'Tools'], {
-    errorMap: () => ({ message: 'Material type must be one of: Seeds, Fertilizers, Pesticides, Tools' }),
+    errorMap: () => ({
+      message: 'Material type must be one of: Seeds, Fertilizers, Pesticides, Tools',
+    }),
   }),
-  uom: z.string({ required_error: 'Unit of Measurement (UOM) is required' }).trim().min(1, 'UOM cannot be empty'),
-  safetyStock: z.number({ required_error: 'Safety Stock is required', invalid_type_error: 'Safety Stock must be a number' }).min(0, 'Safety Stock must be non-negative'),
+  uom: z
+    .string({ required_error: 'Unit of Measurement (UOM) is required' })
+    .trim()
+    .min(1, 'UOM cannot be empty'),
+  safetyStock: z
+    .number({
+      required_error: 'Safety Stock is required',
+      invalid_type_error: 'Safety Stock must be a number',
+    })
+    .min(0, 'Safety Stock must be non-negative'),
 });
 
 type MaterialFormValues = z.infer<typeof MaterialFormSchema>;
 
-// Fetcher function
-const fetchMaterials = async (): Promise<IApiResponse<IMaterial[]>> => {
-  const res = await fetch('/api/materials');
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.error || 'Failed to fetch catalog materials');
-  }
-  return res.json();
-};
-
 export default function CatalogPage() {
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('All');
 
@@ -62,64 +49,25 @@ export default function CatalogPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<IMaterial | null>(null);
 
-  // React Hook Form
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<MaterialFormValues>({
-    resolver: zodResolver(MaterialFormSchema),
-    defaultValues: {
-      name: '',
-      type: 'Seeds',
-      uom: '',
-      safetyStock: 0,
-    }
-  });
-
   // TanStack React Query GET Catalog
-  const { data, isLoading, error, refetch } = useQuery<IApiResponse<IMaterial[]>, Error>({
-    queryKey: queryKeys.materials.all,
-    queryFn: fetchMaterials,
-  });
+  const { data, isLoading, error, refetch } = useMaterialsQuery();
 
-  // TanStack Query Mutations
-  const createMutation = useMutation<IApiResponse<IMaterial>, Error, MaterialFormValues>({
-    mutationFn: async (newMaterial) => {
-      const res = await fetch('/api/materials', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-role': 'Manager', // Simulated admin header
-        },
-        body: JSON.stringify(newMaterial),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to create material');
-      }
-      return res.json();
-    },
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingMaterial(null);
+    createMutation.reset();
+    updateMutation.reset();
+  };
+
+  // Mutations
+  const createMutation = useCreateMaterialMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
       handleCloseModal();
     },
   });
 
-  const updateMutation = useMutation<IApiResponse<IMaterial>, Error, { id: string; data: MaterialFormValues }>({
-    mutationFn: async ({ id, data }) => {
-      const res = await fetch(`/api/materials/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-role': 'Manager', // Simulated admin header
-        },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to update material');
-      }
-      return res.json();
-    },
+  const updateMutation = useUpdateMaterialMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
       handleCloseModal();
     },
   });
@@ -128,33 +76,13 @@ export default function CatalogPage() {
   const handleOpenAddModal = () => {
     setIsEditMode(false);
     setEditingMaterial(null);
-    reset({
-      name: '',
-      type: 'Seeds',
-      uom: '',
-      safetyStock: 0,
-    });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (material: IMaterial) => {
     setIsEditMode(true);
     setEditingMaterial(material);
-    reset({
-      name: material.name,
-      type: material.type,
-      uom: material.uom,
-      safetyStock: material.safetyStock,
-    });
     setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingMaterial(null);
-    reset();
-    createMutation.reset();
-    updateMutation.reset();
   };
 
   // Keyboard navigation for accessible modal dismissal
@@ -179,13 +107,15 @@ export default function CatalogPage() {
   const materials: IMaterial[] = data?.data || [];
 
   // Client-side dynamic filtering
-  const filteredMaterials = materials.filter((material) => {
-    const matchesSearch = material.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'All' || material.type === selectedType;
-    return matchesSearch && matchesType;
-  });
+  const filteredMaterials = useMemo(() => {
+    return materials.filter((material) => {
+      const matchesSearch = material.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = selectedType === 'All' || material.type === selectedType;
+      return matchesSearch && matchesType;
+    });
+  }, [materials, searchTerm, selectedType]);
 
-  const categories: { label: string; value: string; emoji: string }[] = [
+  const categories = [
     { label: 'All Supplies', value: 'All', emoji: '📦' },
     { label: 'Seeds', value: 'Seeds', emoji: '🌱' },
     { label: 'Fertilizers', value: 'Fertilizers', emoji: '🧪' },
@@ -195,6 +125,149 @@ export default function CatalogPage() {
 
   const apiError = createMutation.error?.message || updateMutation.error?.message;
   const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  // React Table Columns
+  const columns = useMemo<ColumnDef<IMaterial>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: 'Supply Name',
+        cell: ({ row }) => (
+          <span style={{ fontWeight: 600, color: '#fff' }}>{row.original.name}</span>
+        ),
+      },
+      {
+        accessorKey: 'type',
+        header: 'Category',
+        cell: ({ row }) => {
+          const type = row.original.type;
+          return (
+            <span className="glass-badge glass-badge-muted">
+              {type === 'Seeds' && '🌱 '}
+              {type === 'Fertilizers' && '🧪 '}
+              {type === 'Pesticides' && '🦠 '}
+              {type === 'Tools' && '🛠️ '}
+              {type}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'currentStock',
+        header: 'Current Stock',
+        cell: ({ row }) => {
+          const material = row.original;
+          const isLowStock = material.currentStock < material.safetyStock;
+          return (
+            <span style={{ fontWeight: 700 }}>
+              <span style={{ color: isLowStock ? 'var(--warning)' : 'var(--foreground)' }}>
+                {material.currentStock}
+              </span>
+              <span
+                style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--muted-foreground)',
+                  marginLeft: '0.25rem',
+                  fontWeight: 400,
+                }}
+              >
+                {material.uom}
+              </span>
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'safetyStock',
+        header: 'Safety Stock',
+        cell: ({ row }) => (
+          <span style={{ color: 'var(--muted-foreground)' }}>
+            {row.original.safetyStock}
+            <span style={{ fontSize: '0.8rem', marginLeft: '0.25rem' }}>{row.original.uom}</span>
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const material = row.original;
+          const isLowStock = material.currentStock < material.safetyStock;
+          return isLowStock ? (
+            <span className="glass-badge glass-badge-warning">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginRight: '0.25rem' }}
+              >
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              Low Stock
+            </span>
+          ) : (
+            <span className="glass-badge glass-badge-primary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginRight: '0.25rem' }}
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Healthy
+            </span>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: () => <div style={{ textAlign: 'right' }}>Actions</div>,
+        cell: ({ row }) => (
+          <div style={{ textAlign: 'right' }}>
+            <button
+              className="glass-btn"
+              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+              onClick={() => handleOpenEditModal(row.original)}
+              aria-label={`Edit ${row.original.name}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginRight: '0.25rem' }}
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              <span>Edit</span>
+            </button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -206,12 +279,22 @@ export default function CatalogPage() {
             Registered warehouse items, inventory levels, and threshold limits
           </p>
         </div>
-        <button 
-          className="glass-btn glass-btn-primary" 
-          onClick={handleOpenAddModal} 
+        <button
+          className="glass-btn glass-btn-primary"
+          onClick={handleOpenAddModal}
           aria-label="Add new catalog material"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -223,8 +306,28 @@ export default function CatalogPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'center' }}>
           <div style={{ position: 'relative', width: '100%' }}>
-            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <span
+              style={{
+                position: 'absolute',
+                left: '1rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--muted-foreground)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
@@ -241,7 +344,17 @@ export default function CatalogPage() {
             />
           </div>
           <button className="glass-btn" onClick={() => refetch()} aria-label="Refresh catalog list">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
               <path d="M16 16h5v5" />
@@ -272,174 +385,20 @@ export default function CatalogPage() {
 
       {/* Main Table Screen */}
       <div className="glass-panel glass-card">
-        {/* Loading skeleton state */}
-        {isLoading && (
-          <div style={{ padding: '1rem 0' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <th style={{ padding: '1rem' }}>Supply Name</th>
-                  <th style={{ padding: '1rem' }}>Category</th>
-                  <th style={{ padding: '1rem' }}>Current Stock</th>
-                  <th style={{ padding: '1rem' }}>Safety Stock</th>
-                  <th style={{ padding: '1rem' }}>Status</th>
-                  <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...Array(5)].map((_, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '1.25rem 1rem' }}>
-                      <div className="skeleton-pulse" style={{ height: '1.25rem', width: '200px', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px' }}></div>
-                    </td>
-                    <td style={{ padding: '1.25rem 1rem' }}>
-                      <div className="skeleton-pulse" style={{ height: '1.25rem', width: '80px', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px' }}></div>
-                    </td>
-                    <td style={{ padding: '1.25rem 1rem' }}>
-                      <div className="skeleton-pulse" style={{ height: '1.25rem', width: '60px', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px' }}></div>
-                    </td>
-                    <td style={{ padding: '1.25rem 1rem' }}>
-                      <div className="skeleton-pulse" style={{ height: '1.25rem', width: '60px', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px' }}></div>
-                    </td>
-                    <td style={{ padding: '1.25rem 1rem' }}>
-                      <div className="skeleton-pulse" style={{ height: '1.25rem', width: '100px', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px' }}></div>
-                    </td>
-                    <td style={{ padding: '1.25rem 1rem', textAlign: 'right' }}>
-                      <div className="skeleton-pulse" style={{ height: '1.25rem', width: '60px', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px', marginLeft: 'auto' }}></div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Error UI state */}
-        {error && (
-          <div className="glass-glow-danger" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 2rem', textAlign: 'center', gap: '1rem' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-            </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Database Sync Failure</h3>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem', maxWidth: '400px' }}>
-              {error.message || 'An error occurred while loading the inventory catalog records.'}
-            </p>
-            <button className="glass-btn glass-btn-primary" onClick={() => refetch()} style={{ marginTop: '0.5rem' }}>
-              Retry Catalog Sync
-            </button>
-          </div>
-        )}
-
-        {/* Catalog Table list */}
-        {!isLoading && !error && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <th style={{ padding: '1rem' }}>Supply Name</th>
-                  <th style={{ padding: '1rem' }}>Category</th>
-                  <th style={{ padding: '1rem' }}>Current Stock</th>
-                  <th style={{ padding: '1rem' }}>Safety Stock</th>
-                  <th style={{ padding: '1rem' }}>Status</th>
-                  <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMaterials.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>
-                      <div style={{ marginBottom: '0.75rem', fontSize: '1.5rem' }}>🔍</div>
-                      <p style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff' }}>No items found</p>
-                      <p style={{ fontSize: '0.85rem' }}>Try refining your search terms or selecting another catalog category filter.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMaterials.map((material) => {
-                    const isLowStock = material.currentStock < material.safetyStock;
-                    
-                    return (
-                      <tr
-                        key={material._id}
-                        style={{ borderBottom: '1px solid var(--border)', transition: 'var(--transition-smooth)' }}
-                        className="catalog-row"
-                      >
-                        <td style={{ padding: '1.15rem 1rem', fontWeight: 600, color: '#fff' }}>
-                          {material.name}
-                        </td>
-                        <td style={{ padding: '1.15rem 1rem' }}>
-                          <span className="glass-badge glass-badge-muted">
-                            {material.type === 'Seeds' && '🌱 '}
-                            {material.type === 'Fertilizers' && '🧪 '}
-                            {material.type === 'Pesticides' && '🦠 '}
-                            {material.type === 'Tools' && '🛠️ '}
-                            {material.type}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1.15rem 1rem', fontWeight: 700 }}>
-                          <span style={{ color: isLowStock ? 'var(--warning)' : 'var(--foreground)' }}>
-                            {material.currentStock}
-                          </span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', marginLeft: '0.25rem', fontWeight: 400 }}>
-                            {material.uom}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1.15rem 1rem', color: 'var(--muted-foreground)' }}>
-                          {material.safetyStock}
-                          <span style={{ fontSize: '0.8rem', marginLeft: '0.25rem' }}>
-                            {material.uom}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1.15rem 1rem' }}>
-                          {isLowStock ? (
-                            <span className="glass-badge glass-badge-warning">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.25rem' }}>
-                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                                <line x1="12" y1="9" x2="12" y2="13" />
-                                <line x1="12" y1="17" x2="12.01" y2="17" />
-                              </svg>
-                              Low Stock
-                            </span>
-                          ) : (
-                            <span className="glass-badge glass-badge-primary">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.25rem' }}>
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              Healthy
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '1.15rem 1rem', textAlign: 'right' }}>
-                          <button
-                            className="glass-btn"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                            onClick={() => handleOpenEditModal(material)}
-                            aria-label={`Edit ${material.name}`}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.25rem' }}>
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
-                            <span>Edit</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <GenericTable
+          data={filteredMaterials}
+          columns={columns}
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+          emptyStateText="No catalog supplies found matching the selection criteria."
+        />
       </div>
 
       {/* Catalog Form Modal */}
       {isModalOpen && (
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           style={{
             position: 'fixed',
             top: 0,
@@ -455,20 +414,20 @@ export default function CatalogPage() {
             padding: '1rem',
           }}
           onClick={(e) => {
-            // Close modal on backdrop click
             if (e.target === e.currentTarget) {
               handleCloseModal();
             }
           }}
         >
-          <div 
-            className="glass-panel glass-card" 
+          <div
+            className="glass-panel glass-card"
             style={{
               width: '100%',
               maxWidth: '480px',
               background: 'rgba(18, 18, 22, 0.95)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(16, 185, 129, 0.05)',
+              boxShadow:
+                '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(16, 185, 129, 0.05)',
               borderRadius: '16px',
               padding: '2rem',
               display: 'flex',
@@ -481,7 +440,7 @@ export default function CatalogPage() {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
                 {isEditMode ? 'Edit Catalog Supply' : 'Register New Supply'}
               </h3>
-              <button 
+              <button
                 onClick={handleCloseModal}
                 style={{
                   background: 'none',
@@ -495,7 +454,17 @@ export default function CatalogPage() {
                 }}
                 aria-label="Close modal"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
@@ -504,8 +473,8 @@ export default function CatalogPage() {
 
             {/* Error Message Box */}
             {apiError && (
-              <div 
-                className="glass-glow-danger" 
+              <div
+                className="glass-glow-danger"
                 style={{
                   padding: '0.75rem 1rem',
                   background: 'rgba(239, 68, 68, 0.08)',
@@ -518,7 +487,16 @@ export default function CatalogPage() {
                   gap: '0.5rem',
                 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  style={{ flexShrink: 0 }}
+                >
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -528,139 +506,129 @@ export default function CatalogPage() {
             )}
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Field: Name */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
-                  Supply Item Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Premium Jasmine Rice Seeds"
-                  className="glass-input"
-                  style={{
-                    borderColor: errors.name ? 'var(--danger)' : 'var(--border)',
-                    boxShadow: errors.name ? '0 0 10px rgba(239, 68, 68, 0.15)' : 'none'
-                  }}
-                  {...register('name')}
-                  aria-invalid={errors.name ? 'true' : 'false'}
-                />
-                {errors.name && (
-                  <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.125rem' }}>
-                    {errors.name.message}
-                  </p>
-                )}
-              </div>
+            <GenericForm
+              schema={MaterialFormSchema}
+              defaultValues={
+                isEditMode && editingMaterial
+                  ? {
+                      name: editingMaterial.name,
+                      type: editingMaterial.type,
+                      uom: editingMaterial.uom,
+                      safetyStock: editingMaterial.safetyStock,
+                    }
+                  : {
+                      name: '',
+                      type: 'Seeds',
+                      uom: '',
+                      safetyStock: 0,
+                    }
+              }
+              onSubmit={onSubmit}
+            >
+              {({ register: formRegister, formState: { errors } }) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <FormFieldItem
+                    label="Supply Item Name"
+                    name="name"
+                    error={errors.name?.message}
+                    register={formRegister('name')}
+                    placeholder="e.g. Premium Jasmine Rice Seeds"
+                    required
+                  />
 
-              {/* Field: Type */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
-                  Supply Category
-                </label>
-                <select
-                  className="glass-input"
-                  style={{
-                    borderColor: errors.type ? 'var(--danger)' : 'var(--border)',
-                    boxShadow: errors.type ? '0 0 10px rgba(239, 68, 68, 0.15)' : 'none',
-                    appearance: 'none',
-                    background: 'rgba(24, 24, 27, 0.6) url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'none\' stroke=\'%23a1a1aa\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'m4 6 4 4 4-4\'/%3E%3C/svg%3E") no-repeat right 1rem center'
-                  }}
-                  {...register('type')}
-                  aria-invalid={errors.type ? 'true' : 'false'}
-                >
-                  <option value="Seeds" style={{ background: '#121216' }}>🌱 Seeds</option>
-                  <option value="Fertilizers" style={{ background: '#121216' }}>🧪 Fertilizers</option>
-                  <option value="Pesticides" style={{ background: '#121216' }}>🦠 Pesticides</option>
-                  <option value="Tools" style={{ background: '#121216' }}>🛠️ Tools</option>
-                </select>
-                {errors.type && (
-                  <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.125rem' }}>
-                    {errors.type.message}
-                  </p>
-                )}
-              </div>
+                  <FormFieldItem
+                    label="Supply Category"
+                    name="type"
+                    error={errors.type?.message}
+                    register={formRegister('type')}
+                    as="select"
+                    required
+                    style={{
+                      appearance: 'none',
+                      background:
+                        'rgba(24, 24, 27, 0.6) url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'none\' stroke=\'%23a1a1aa\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'m4 6 4 4 4-4\'/%3E%3C/svg%3E") no-repeat right 1rem center',
+                    }}
+                  >
+                    <option value="Seeds" style={{ background: '#121216' }}>
+                      🌱 Seeds
+                    </option>
+                    <option value="Fertilizers" style={{ background: '#121216' }}>
+                      🧪 Fertilizers
+                    </option>
+                    <option value="Pesticides" style={{ background: '#121216' }}>
+                      🦠 Pesticides
+                    </option>
+                    <option value="Tools" style={{ background: '#121216' }}>
+                      🛠️ Tools
+                    </option>
+                  </FormFieldItem>
 
-              {/* Field: UOM */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
-                  Unit of Measurement (UOM)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. kg, bags, liters, units"
-                  className="glass-input"
-                  style={{
-                    borderColor: errors.uom ? 'var(--danger)' : 'var(--border)',
-                    boxShadow: errors.uom ? '0 0 10px rgba(239, 68, 68, 0.15)' : 'none'
-                  }}
-                  {...register('uom')}
-                  aria-invalid={errors.uom ? 'true' : 'false'}
-                />
-                {errors.uom && (
-                  <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.125rem' }}>
-                    {errors.uom.message}
-                  </p>
-                )}
-              </div>
+                  <FormFieldItem
+                    label="Unit of Measurement (UOM)"
+                    name="uom"
+                    error={errors.uom?.message}
+                    register={formRegister('uom')}
+                    placeholder="e.g. kg, bags, liters, units"
+                    required
+                  />
 
-              {/* Field: Safety Stock */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
-                  Safety Stock Alert Threshold
-                </label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  min="0"
-                  className="glass-input"
-                  style={{
-                    borderColor: errors.safetyStock ? 'var(--danger)' : 'var(--border)',
-                    boxShadow: errors.safetyStock ? '0 0 10px rgba(239, 68, 68, 0.15)' : 'none'
-                  }}
-                  {...register('safetyStock', { valueAsNumber: true })}
-                  aria-invalid={errors.safetyStock ? 'true' : 'false'}
-                />
-                {errors.safetyStock && (
-                  <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.125rem' }}>
-                    {errors.safetyStock.message}
-                  </p>
-                )}
-              </div>
+                  <FormFieldItem
+                    label="Safety Stock Alert Threshold"
+                    name="safetyStock"
+                    error={errors.safetyStock?.message}
+                    register={formRegister('safetyStock', { valueAsNumber: true })}
+                    placeholder="0"
+                    type="number"
+                    min="0"
+                    required
+                  />
 
-              {/* Action Buttons Row */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem' }}>
-                <button 
-                  type="button" 
-                  className="glass-btn" 
-                  onClick={handleCloseModal}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="glass-btn glass-btn-primary" 
-                  disabled={isSaving}
-                  style={{ minWidth: '100px' }}
-                >
-                  {isSaving ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                      <span className="spinner" style={{
-                        width: '12px',
-                        height: '12px',
-                        border: '2px solid #fff',
-                        borderTop: '2px solid transparent',
-                        borderRadius: '50%',
-                        animation: 'spin 0.8s linear infinite'
-                      }}></span>
-                      Saving...
-                    </span>
-                  ) : (
-                    <span>Save Supply</span>
-                  )}
-                </button>
-              </div>
-            </form>
+                  {/* Action Buttons Row */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      gap: '0.75rem',
+                      marginTop: '0.75rem',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="glass-btn"
+                      onClick={handleCloseModal}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="glass-btn glass-btn-primary"
+                      disabled={isSaving}
+                      style={{ minWidth: '100px' }}
+                    >
+                      {isSaving ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                          <span
+                            className="spinner"
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              border: '2px solid #fff',
+                              borderTop: '2px solid transparent',
+                              borderRadius: '50%',
+                              animation: 'spin 0.8s linear infinite',
+                            }}
+                          ></span>
+                          Saving...
+                        </span>
+                      ) : (
+                        <span>Save Supply</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </GenericForm>
           </div>
         </div>
       )}
@@ -668,8 +636,12 @@ export default function CatalogPage() {
       {/* Global CSS spinner keyframe */}
       <style jsx global>{`
         @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
     </div>

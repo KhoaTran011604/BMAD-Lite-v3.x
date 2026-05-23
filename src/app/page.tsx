@@ -1,34 +1,13 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-
-import { queryKeys } from '@/lib/utils';
+import { useDashboardSummaryQuery } from '@/hooks/use-dashboard-queries';
 import type {
   DashboardLowStockWarning,
   DashboardNearExpiryAlert,
   DashboardStockItem,
   DashboardSummary,
 } from '@/lib/utils';
-
-interface IApiResponse<T> {
-  data: T;
-  meta?: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-}
-
-const fetchDashboardSummary = async (): Promise<IApiResponse<DashboardSummary>> => {
-  const response = await fetch('/api/materials?view=dashboard');
-
-  if (!response.ok) {
-    throw new Error('Unable to load live inventory metrics right now.');
-  }
-
-  return response.json();
-};
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -128,11 +107,7 @@ const LoadingDashboard = () => (
 );
 
 export default function Dashboard() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<IApiResponse<DashboardSummary>, Error>({
-    queryKey: queryKeys.dashboard.liveStock(),
-    queryFn: fetchDashboardSummary,
-    refetchInterval: 30000,
-  });
+  const { data, isLoading, isError, error, refetch, isFetching } = useDashboardSummaryQuery();
 
   const summary = data?.data;
   const lowStockWarnings: DashboardLowStockWarning[] = summary?.lowStockWarnings ?? [];

@@ -1,9 +1,15 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
 
-import { filterExportHistory, filterImportHistory, queryKeys, sortByDateDesc } from '@/lib/utils';
+import { useImportsQuery } from '@/hooks/use-imports-queries';
+import { useExportsQuery } from '@/hooks/use-exports-queries';
+import type { IImport } from '@/hooks/use-imports-queries';
+import type { IExport } from '@/hooks/use-exports-queries';
+
+import { filterExportHistory, filterImportHistory, sortByDateDesc } from '@/lib/utils';
+import { GenericTable } from '@/components/GenericTable';
 
 type MaterialType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Tools';
 type HistoryTab = 'imports' | 'exports';
@@ -15,30 +21,6 @@ interface IMaterial {
   uom: string;
   safetyStock: number;
   currentStock: number;
-}
-
-interface IImport {
-  _id: string;
-  date: string;
-  supplierName: string;
-  materialId: IMaterial;
-  quantity: number;
-  unitPrice: number;
-  batchCode?: string;
-  expirationDate?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface IExport {
-  _id: string;
-  date: string;
-  requesterName: string;
-  materialId: IMaterial;
-  quantity: number;
-  destinationPurpose: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface IApiResponse<T> {
@@ -60,23 +42,6 @@ type IHistorySelection =
       record: IExport;
     };
 
-const fetchHistory = async <T,>(path: string, fallbackMessage: string): Promise<IApiResponse<T[]>> => {
-  const response = await fetch(path);
-
-  if (!response.ok) {
-    const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorBody.error || fallbackMessage);
-  }
-
-  return response.json() as Promise<IApiResponse<T[]>>;
-};
-
-const fetchImports = (): Promise<IApiResponse<IImport[]>> =>
-  fetchHistory<IImport>('/api/imports', 'Failed to fetch import transaction logs');
-
-const fetchExports = (): Promise<IApiResponse<IExport[]>> =>
-  fetchHistory<IExport>('/api/exports', 'Failed to fetch export transaction logs');
-
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return Number.isNaN(date.getTime()) ? dateString : date.toISOString().split('T')[0];
@@ -92,7 +57,6 @@ const getMaterialTypeLabel = (materialType?: MaterialType): string => {
   if (!materialType) {
     return 'Unclassified';
   }
-
   return materialType;
 };
 
@@ -112,20 +76,14 @@ export default function HistoryPage() {
     isLoading: isImportsLoading,
     error: importsError,
     refetch: refetchImports,
-  } = useQuery<IApiResponse<IImport[]>, Error>({
-    queryKey: queryKeys.imports.all,
-    queryFn: fetchImports,
-  });
+  } = useImportsQuery();
 
   const {
     data: exportsResponse,
     isLoading: isExportsLoading,
     error: exportsError,
     refetch: refetchExports,
-  } = useQuery<IApiResponse<IExport[]>, Error>({
-    queryKey: queryKeys.exports.all,
-    queryFn: fetchExports,
-  });
+  } = useExportsQuery();
 
   const imports = useMemo<IImport[]>(
     () => sortByDateDesc<IImport>(importsResponse?.data ?? []),
@@ -144,8 +102,6 @@ export default function HistoryPage() {
   const filteredExports = useMemo(() => {
     return filterExportHistory(exports, searchTerm);
   }, [exports, searchTerm]);
-
-  const hasActiveSearch = searchTerm.trim().length > 0;
 
   const handleCloseDrawer = useCallback(() => {
     setIsDrawerOpen(false);
@@ -196,50 +152,138 @@ export default function HistoryPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleCloseDrawer, isDrawerOpen]);
 
-  const activeError = activeTab === 'imports' ? importsError : exportsError;
-  const isActiveLoading = activeTab === 'imports' ? isImportsLoading : isExportsLoading;
-  const hasRows = activeTab === 'imports' ? filteredImports.length > 0 : filteredExports.length > 0;
-
-  const renderLoadingRows = (columnCount: number) => (
-    <tbody>
-      {Array.from({ length: 5 }, (_, index) => (
-        <tr key={`loading-row-${index}`} style={{ borderBottom: '1px solid var(--border)' }}>
-          {Array.from({ length: columnCount }, (_, columnIndex) => (
-            <td key={`loading-cell-${index}-${columnIndex}`} style={{ padding: '1.1rem 1rem' }}>
-              <div
-                className="skeleton-pulse"
-                style={{
-                  height: '1.1rem',
-                  width: `${60 + columnIndex * 20}px`,
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                }}
-              />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </tbody>
+  // Import Table Columns
+  const importColumns = useMemo<ColumnDef<IImport>[]>(
+    () => [
+      {
+        accessorKey: 'date',
+        header: 'Date',
+        cell: ({ row }) => (
+          <span style={{ color: 'var(--muted-foreground)' }}>
+            {formatDate(row.original.date)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'materialId.name',
+        header: 'Material',
+        cell: ({ row }) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span>{row.original.materialId?.name || 'Unknown Material'}</span>
+            <span className="glass-badge glass-badge-muted" style={{ width: 'fit-content' }}>
+              {getMaterialTypeLabel(row.original.materialId?.type as MaterialType)}
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'supplierName',
+        header: 'Supplier',
+        cell: ({ row }) => <span>{row.original.supplierName}</span>,
+      },
+      {
+        accessorKey: 'quantity',
+        header: 'Quantity',
+        cell: ({ row }) => (
+          <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
+            +{row.original.quantity}
+            <span
+              style={{
+                marginLeft: '0.25rem',
+                fontSize: '0.8rem',
+                fontWeight: 400,
+                color: 'var(--muted-foreground)',
+              }}
+            >
+              {row.original.materialId?.uom}
+            </span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'unitPrice',
+        header: 'Unit Price',
+        cell: ({ row }) => <span>{formatCurrency(row.original.unitPrice)}</span>,
+      },
+      {
+        id: 'totalCost',
+        header: () => <div style={{ textAlign: 'right' }}>Total Cost</div>,
+        cell: ({ row }) => (
+          <div style={{ textAlign: 'right', color: '#fff', fontWeight: 700 }}>
+            {formatCurrency(row.original.quantity * row.original.unitPrice)}
+          </div>
+        ),
+      },
+    ],
+    []
   );
 
-  const renderEmptyState = () => (
-    <tr>
-      <td
-        colSpan={activeTab === 'imports' ? 6 : 5}
-        style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}
-      >
-        <p style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', marginBottom: '0.5rem' }}>
-          No {activeTab === 'imports' ? 'receipts' : 'exports'} found
-        </p>
-        <p style={{ fontSize: '0.9rem' }}>
-          {hasActiveSearch
-            ? 'Try a different keyword to broaden the audit search.'
-            : activeTab === 'imports'
-              ? 'New import receipts will appear here once stock is logged.'
-              : 'New export disbursements will appear here once inventory is issued.'}
-        </p>
-      </td>
-    </tr>
+  // Export Table Columns
+  const exportColumns = useMemo<ColumnDef<IExport>[]>(
+    () => [
+      {
+        accessorKey: 'date',
+        header: 'Date',
+        cell: ({ row }) => (
+          <span style={{ color: 'var(--muted-foreground)' }}>
+            {formatDate(row.original.date)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'materialId.name',
+        header: 'Material',
+        cell: ({ row }) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span>{row.original.materialId?.name || 'Unknown Material'}</span>
+            <span className="glass-badge glass-badge-muted" style={{ width: 'fit-content' }}>
+              {getMaterialTypeLabel(row.original.materialId?.type as MaterialType)}
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'requesterName',
+        header: 'Requester',
+        cell: ({ row }) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{row.original.requesterName}</span>
+            <span style={{ color: 'var(--muted-foreground)', fontSize: '0.82rem' }}>
+              Issued for field execution
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'quantity',
+        header: 'Quantity',
+        cell: ({ row }) => (
+          <span style={{ fontWeight: 800, color: '#fca5a5' }}>
+            -{row.original.quantity}
+            <span
+              style={{
+                marginLeft: '0.25rem',
+                fontSize: '0.8rem',
+                fontWeight: 400,
+                color: 'var(--muted-foreground)',
+              }}
+            >
+              {row.original.materialId?.uom}
+            </span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'destinationPurpose',
+        header: 'Purpose',
+        cell: ({ row }) => (
+          <span className="glass-badge glass-badge-warning">
+            {row.original.destinationPurpose}
+          </span>
+        ),
+      },
+    ],
+    []
   );
 
   return (
@@ -263,7 +307,7 @@ export default function HistoryPage() {
           id="history-tab-imports"
           role="tab"
           aria-selected={activeTab === 'imports'}
-          aria-controls="history-panel-imports"
+          aria-controls="history-panel"
           onClick={() => handleTabChange('imports')}
           className={`glass-btn ${activeTab === 'imports' ? 'glass-btn-primary' : ''}`}
           style={{
@@ -280,7 +324,7 @@ export default function HistoryPage() {
           id="history-tab-exports"
           role="tab"
           aria-selected={activeTab === 'exports'}
-          aria-controls="history-panel-exports"
+          aria-controls="history-panel"
           onClick={() => handleTabChange('exports')}
           className={`glass-btn ${activeTab === 'exports' ? 'glass-btn-primary' : ''}`}
           style={{
@@ -344,193 +388,31 @@ export default function HistoryPage() {
         </button>
       </div>
 
-      <div
-        id={activeTab === 'imports' ? 'history-panel-imports' : 'history-panel-exports'}
-        role="tabpanel"
-        aria-labelledby={activeTab === 'imports' ? 'history-tab-imports' : 'history-tab-exports'}
-        className="glass-panel glass-card"
-      >
-        {activeError ? (
-          <div
-            className="glass-glow-danger"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '3rem 2rem',
-              textAlign: 'center',
-              gap: '1rem',
-            }}
-          >
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>Unable to load history</h3>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem', maxWidth: '420px' }}>
-              {activeError.message || 'The transaction feed could not be loaded. Please retry.'}
-            </p>
-            <button type="button" className="glass-btn glass-btn-primary" onClick={handleRetry}>
-              Retry
-            </button>
-          </div>
+      <div id="history-panel" role="tabpanel" className="glass-panel glass-card">
+        {activeTab === 'imports' ? (
+          <GenericTable
+            data={filteredImports}
+            columns={importColumns}
+            isLoading={isImportsLoading}
+            error={importsError}
+            onRetry={refetchImports}
+            onRowClick={handleOpenImportDrawer}
+            emptyStateText="No import receipts logged yet."
+          />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr
-                  style={{
-                    borderBottom: '1px solid var(--border)',
-                    color: 'var(--muted-foreground)',
-                    fontSize: '0.85rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  <th style={{ padding: '1rem' }}>Date</th>
-                  <th style={{ padding: '1rem' }}>Material</th>
-                  <th style={{ padding: '1rem' }}>
-                    {activeTab === 'imports' ? 'Supplier' : 'Requester'}
-                  </th>
-                  <th style={{ padding: '1rem' }}>Quantity</th>
-                  {activeTab === 'imports' ? (
-                    <>
-                      <th style={{ padding: '1rem' }}>Unit Price</th>
-                      <th style={{ padding: '1rem', textAlign: 'right' }}>Total Cost</th>
-                    </>
-                  ) : (
-                    <th style={{ padding: '1rem' }}>Purpose</th>
-                  )}
-                </tr>
-              </thead>
-
-              {isActiveLoading ? (
-                renderLoadingRows(activeTab === 'imports' ? 6 : 5)
-              ) : (
-                <tbody>
-                  {!hasRows
-                    ? renderEmptyState()
-                    : activeTab === 'imports'
-                      ? filteredImports.map((entry) => {
-                          const totalCost = entry.quantity * entry.unitPrice;
-
-                          return (
-                            <tr
-                              key={entry._id}
-                              className="catalog-row"
-                              role="button"
-                              tabIndex={0}
-                              aria-label={`Open import record for ${entry.materialId?.name || 'Unknown Material'}`}
-                              onClick={() => handleOpenImportDrawer(entry)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                  event.preventDefault();
-                                  handleOpenImportDrawer(entry);
-                                }
-                              }}
-                              style={{
-                                borderBottom: '1px solid var(--border)',
-                                cursor: 'pointer',
-                                transition: 'var(--transition-smooth)',
-                              }}
-                            >
-                              <td style={{ padding: '1.1rem 1rem', color: 'var(--muted-foreground)' }}>
-                                {formatDate(entry.date)}
-                              </td>
-                              <td style={{ padding: '1.1rem 1rem', color: '#fff', fontWeight: 700 }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                  <span>{entry.materialId?.name || 'Unknown Material'}</span>
-                                  <span className="glass-badge glass-badge-muted" style={{ width: 'fit-content' }}>
-                                    {getMaterialTypeLabel(entry.materialId?.type)}
-                                  </span>
-                                </div>
-                              </td>
-                              <td style={{ padding: '1.1rem 1rem', color: 'var(--foreground)' }}>
-                                {entry.supplierName}
-                              </td>
-                              <td style={{ padding: '1.1rem 1rem', fontWeight: 800, color: 'var(--primary)' }}>
-                                +{entry.quantity}
-                                <span
-                                  style={{
-                                    marginLeft: '0.25rem',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 400,
-                                    color: 'var(--muted-foreground)',
-                                  }}
-                                >
-                                  {entry.materialId?.uom}
-                                </span>
-                              </td>
-                              <td style={{ padding: '1.1rem 1rem', color: 'var(--muted-foreground)' }}>
-                                {formatCurrency(entry.unitPrice)}
-                              </td>
-                              <td style={{ padding: '1.1rem 1rem', textAlign: 'right', color: '#fff', fontWeight: 700 }}>
-                                {formatCurrency(totalCost)}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      : filteredExports.map((entry) => (
-                          <tr
-                            key={entry._id}
-                            className="catalog-row"
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Open export record for ${entry.materialId?.name || 'Unknown Material'}`}
-                            onClick={() => handleOpenExportDrawer(entry)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                handleOpenExportDrawer(entry);
-                              }
-                            }}
-                            style={{
-                              borderBottom: '1px solid var(--border)',
-                              cursor: 'pointer',
-                              transition: 'var(--transition-smooth)',
-                            }}
-                          >
-                            <td style={{ padding: '1.1rem 1rem', color: 'var(--muted-foreground)' }}>
-                              {formatDate(entry.date)}
-                            </td>
-                            <td style={{ padding: '1.1rem 1rem', color: '#fff', fontWeight: 700 }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <span>{entry.materialId?.name || 'Unknown Material'}</span>
-                                <span className="glass-badge glass-badge-muted" style={{ width: 'fit-content' }}>
-                                  {getMaterialTypeLabel(entry.materialId?.type)}
-                                </span>
-                              </div>
-                            </td>
-                            <td style={{ padding: '1.1rem 1rem' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                <span style={{ color: '#fff', fontWeight: 700 }}>{entry.requesterName}</span>
-                                <span style={{ color: 'var(--muted-foreground)', fontSize: '0.82rem' }}>
-                                  Issued for field execution
-                                </span>
-                              </div>
-                            </td>
-                            <td style={{ padding: '1.1rem 1rem', fontWeight: 800, color: '#fca5a5' }}>
-                              -{entry.quantity}
-                              <span
-                                style={{
-                                  marginLeft: '0.25rem',
-                                  fontSize: '0.8rem',
-                                  fontWeight: 400,
-                                  color: 'var(--muted-foreground)',
-                                }}
-                              >
-                                {entry.materialId?.uom}
-                              </span>
-                            </td>
-                            <td style={{ padding: '1.1rem 1rem' }}>
-                              <span className="glass-badge glass-badge-warning">{entry.destinationPurpose}</span>
-                            </td>
-                          </tr>
-                        ))}
-                </tbody>
-              )}
-            </table>
-          </div>
+          <GenericTable
+            data={filteredExports}
+            columns={exportColumns}
+            isLoading={isExportsLoading}
+            error={exportsError}
+            onRetry={refetchExports}
+            onRowClick={handleOpenExportDrawer}
+            emptyStateText="No export disbursements logged yet."
+          />
         )}
       </div>
 
+      {/* Detail Drawer */}
       <div
         className={`drawer-overlay ${isDrawerOpen ? 'open' : ''}`}
         onClick={handleCloseDrawer}
@@ -594,7 +476,8 @@ export default function HistoryPage() {
                   {selection.record.materialId?.name || 'Unknown Material'}
                 </h3>
                 <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>
-                  {getMaterialTypeLabel(selection.record.materialId?.type)} · {selection.record.materialId?.uom || 'No UOM'}
+                  {getMaterialTypeLabel(selection.record.materialId?.type as MaterialType)} ·{' '}
+                  {selection.record.materialId?.uom || 'No UOM'}
                 </p>
               </div>
 

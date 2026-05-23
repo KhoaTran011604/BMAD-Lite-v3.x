@@ -27,20 +27,32 @@ project-root/
 │   ├── components/      # UI components (Layout, modals, Forms)
 │   │   ├── Sidebar.tsx  # Navigation pane
 │   │   ├── QuickActionDrawer.tsx # Fast transaction logger drawer
-│   │   └── forms/       # Import and Export validation forms
+│   │   ├── FormError.tsx # Standard form validation error
+│   │   ├── FormFieldItem.tsx # Reusable form input element
+│   │   ├── GenericForm.tsx # Zod-resolver dynamic form wrapper
+│   │   └── GenericTable.tsx # Headless react-table display component
+│   ├── hooks/           # Decoupled React Query Custom Hooks
+│   │   ├── use-dashboard-queries.ts
+│   │   ├── use-materials-queries.ts
+│   │   ├── use-materials-mutations.ts
+│   │   ├── use-imports-queries.ts
+│   │   ├── use-imports-mutations.ts
+│   │   ├── use-exports-queries.ts
+│   │   └── use-exports-mutations.ts
 │   ├── models/          # Mongoose database models
 │   │   ├── Material.ts
 │   │   ├── Import.ts
 │   │   └── Export.ts
 │   ├── lib/             # Third-party configuration and DB connections
 │   │   ├── dbConnect.ts
+│   │   ├── query-keys.ts # Centralized React Query keys
 │   │   └── utils.ts
 │   └── styles/          # Custom Vanilla CSS
 │       ├── globals.css  # CSS custom properties, resets, light/dark themes
 │       ├── layout.css   # Main dashboard grid and sidebar structure
 │       └── glass.css    # Premium glassmorphic utility rules
 ├── tests/
-│   ├── unit/            # Stock computations and schema tests
+│   ├── unit/            # Stock computations, schema, and architectural tests
 │   └── integration/     # Next.js Serverless endpoints and stock verification
 ├── package.json
 ├── tsconfig.json

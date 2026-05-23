@@ -1,35 +1,17 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { queryKeys } from '@/lib/utils';
+import { useMaterialsQuery } from '@/hooks/use-materials-queries';
+import { useCreateImportMutation } from '@/hooks/use-imports-mutations';
+import { useCreateExportMutation } from '@/hooks/use-exports-mutations';
+import type { IMaterial } from '@/hooks/use-materials-queries';
 
 export type MaterialType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Tools';
 export type TransactionMode = 'import' | 'export';
-
-export interface IMaterial {
-  _id: string;
-  name: string;
-  type: MaterialType;
-  uom: string;
-  safetyStock: number;
-  currentStock: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface IApiResponse<T> {
-  data: T;
-  meta?: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-}
 
 export interface ImportFormValues {
   transactionMode: 'import';
@@ -60,7 +42,6 @@ const parseNumberInput = (value: unknown): number | undefined => {
   ) {
     return undefined;
   }
-
   return Number(value);
 };
 
@@ -190,25 +171,13 @@ interface QuickActionDrawerProps {
 }
 
 export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawerProps) {
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const materialsRef = useRef<IMaterial[]>([]);
 
-  const { data: materialsData, isLoading: isMaterialsLoading } = useQuery<IApiResponse<IMaterial[]>, Error>({
-    queryKey: queryKeys.materials.all,
-    queryFn: async (): Promise<IApiResponse<IMaterial[]>> => {
-      const response = await fetch('/api/materials');
-
-      if (!response.ok) {
-        throw new Error('Failed to load catalog supply list');
-      }
-
-      return response.json();
-    },
-  });
+  const { data: materialsData, isLoading: isMaterialsLoading } = useMaterialsQuery();
 
   const materials: IMaterial[] = materialsData?.data ?? [];
   materialsRef.current = materials;
@@ -245,58 +214,6 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
       ? 'Insufficient Stock'
       : undefined;
 
-  const importMutation = useMutation<IApiResponse<unknown>, Error, ImportFormValues>({
-    mutationFn: async (newImport) => {
-      const response = await fetch('/api/imports', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-role': 'FarmManager',
-        },
-        body: JSON.stringify(newImport),
-      });
-
-      if (!response.ok) {
-        const payload: { error?: string } = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Failed to record import delivery');
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.imports.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      handleClose();
-    },
-  });
-
-  const exportMutation = useMutation<IApiResponse<unknown>, Error, ExportFormValues>({
-    mutationFn: async (newExport) => {
-      const response = await fetch('/api/exports', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-role': 'FarmManager',
-        },
-        body: JSON.stringify(newExport),
-      });
-
-      if (!response.ok) {
-        const payload: { error?: string } = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Failed to record export transaction');
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.exports.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.materials.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      handleClose();
-    },
-  });
-
   const handleClose = () => {
     reset(createDefaultValues());
     setSearchTerm('');
@@ -305,6 +222,19 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
     exportMutation.reset();
     onClose();
   };
+
+  // Mutations
+  const importMutation = useCreateImportMutation({
+    onSuccess: () => {
+      handleClose();
+    },
+  });
+
+  const exportMutation = useCreateExportMutation({
+    onSuccess: () => {
+      handleClose();
+    },
+  });
 
   const handleModeChange = (mode: TransactionMode) => {
     setValue('transactionMode', mode, { shouldDirty: true, shouldValidate: true });
@@ -327,7 +257,6 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
         batchCode: values.batchCode?.trim() ? values.batchCode.trim() : undefined,
         expirationDate: values.expirationDate?.trim() ? values.expirationDate : undefined,
       });
-
       return;
     }
 
@@ -347,7 +276,6 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
         handleClose();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
@@ -363,7 +291,6 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
         setIsDropdownOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -413,7 +340,17 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
             onClick={handleClose}
             aria-label="Close drawer panel"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -468,7 +405,7 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                   color: 'var(--danger)',
                   fontSize: '0.85rem',
                   marginBottom: '1.5rem',
-                  backgroundColor: 'var(--danger-glow)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
                   padding: '0.75rem 1rem',
                   borderRadius: '8px',
                   border: '1px solid rgba(239, 68, 68, 0.2)',
@@ -478,7 +415,17 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                 }}
                 role="alert"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="8" x2="12" y2="12"></line>
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -505,7 +452,17 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                   <span style={{ color: selectedMaterial ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
                     {selectedMaterial ? selectedMaterial.name : 'Select catalog supply item...'}
                   </span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
                 </button>
@@ -525,7 +482,15 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                         autoFocus
                       />
                     </div>
-                    <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div
+                      style={{
+                        maxHeight: '180px',
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.25rem',
+                      }}
+                    >
                       {isMaterialsLoading ? (
                         <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
                           Loading items...
@@ -725,7 +690,18 @@ export default function QuickActionDrawer({ isOpen, onClose }: QuickActionDrawer
                       gap: '0.5rem',
                     }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ flexShrink: 0, marginTop: '2px' }}
+                    >
                       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
                       <line x1="12" y1="9" x2="12" y2="13"></line>
                       <line x1="12" y1="17" x2="12.01" y2="17"></line>
